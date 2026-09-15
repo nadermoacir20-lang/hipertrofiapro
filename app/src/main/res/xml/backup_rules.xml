@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include domain="file" path="hipertrofia_state_v7.json" />
+    <include domain="sharedpref" path="hp_native_v7.xml" />
+</full-backup-content>
