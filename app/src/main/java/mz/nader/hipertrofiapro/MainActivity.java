@@ -17,7 +17,9 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -30,6 +32,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -52,7 +55,7 @@ public final class MainActivity extends Activity {
     private static final String APP_URL =
             "https://appassets.androidplatform.net/assets/www/index.html";
 
-    private static final String APP_VERSION = "7.1.1";
+    private static final String APP_VERSION = "7.1.2";
 
     private static final int REQ_CREATE_BACKUP = 5001;
     private static final int REQ_OPEN_BACKUP = 5002;
@@ -75,8 +78,9 @@ public final class MainActivity extends Activity {
     private FrameLayout rootLayout;
     private FrameLayout videoOverlay;
 
-    private PlayerView playerView;
+    private SpeedPlayerView playerView;
     private TextView videoStatus;
+    private TextView speedIndicator;
     private ExoPlayer player;
 
     private NativeStateStore stateStore;
@@ -735,7 +739,7 @@ public final class MainActivity extends Activity {
 
 
         playerView =
-                new PlayerView(this);
+                new SpeedPlayerView(this);
 
         playerView.setBackgroundColor(
                 Color.BLACK
@@ -756,6 +760,46 @@ public final class MainActivity extends Activity {
                         FrameLayout.LayoutParams.MATCH_PARENT,
                         FrameLayout.LayoutParams.MATCH_PARENT
                 )
+        );
+
+
+        speedIndicator =
+                new TextView(this);
+
+        speedIndicator.setText("2×");
+        speedIndicator.setTextColor(Color.WHITE);
+        speedIndicator.setTextSize(18);
+        speedIndicator.setGravity(Gravity.CENTER);
+        speedIndicator.setPadding(
+                dp(14),
+                dp(8),
+                dp(14),
+                dp(8)
+        );
+        speedIndicator.setBackgroundColor(
+                0xAA000000
+        );
+        speedIndicator.setVisibility(
+                View.GONE
+        );
+
+
+        FrameLayout.LayoutParams speedParams =
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        Gravity.TOP
+                                |
+                                Gravity.CENTER_HORIZONTAL
+                );
+
+        speedParams.topMargin =
+                dp(48);
+
+
+        videoOverlay.addView(
+                speedIndicator,
+                speedParams
         );
 
 
@@ -855,6 +899,310 @@ public final class MainActivity extends Activity {
                         FrameLayout.LayoutParams.MATCH_PARENT
                 )
         );
+    }
+
+
+    private void setSpeedIndicatorVisible(
+            boolean visible
+    ) {
+
+        if (speedIndicator == null) {
+            return;
+        }
+
+        speedIndicator.setVisibility(
+                visible
+                        ?
+                        View.VISIBLE
+                        :
+                        View.GONE
+        );
+    }
+
+
+    private final class SpeedPlayerView extends PlayerView {
+
+        private final int touchSlop;
+
+        private boolean trackingLongPress = false;
+        private boolean speedBoostActive = false;
+
+        private float downX = 0f;
+        private float downY = 0f;
+        private float speedBeforeBoost = 1f;
+
+        private final Runnable longPressRunnable =
+                this::beginSpeedBoost;
+
+
+        SpeedPlayerView(
+                Context context
+        ) {
+
+            super(context);
+
+            touchSlop =
+                    ViewConfiguration
+                            .get(context)
+                            .getScaledTouchSlop();
+        }
+
+
+        @Override
+        public boolean dispatchTouchEvent(
+                MotionEvent event
+        ) {
+
+            final int action =
+                    event.getActionMasked();
+
+
+            if (
+                    action
+                            ==
+                            MotionEvent.ACTION_DOWN
+            ) {
+
+                cancelPendingLongPress();
+
+                trackingLongPress =
+                        isSpeedGestureArea(
+                                event
+                        );
+
+                downX =
+                        event.getX();
+
+                downY =
+                        event.getY();
+
+
+                if (trackingLongPress) {
+
+                    postDelayed(
+                            longPressRunnable,
+                            ViewConfiguration
+                                    .getLongPressTimeout()
+                    );
+                }
+
+
+            } else if (
+                    action
+                            ==
+                            MotionEvent.ACTION_MOVE
+            ) {
+
+                if (
+                        trackingLongPress
+                                &&
+                                !speedBoostActive
+                ) {
+
+                    final float dx =
+                            Math.abs(
+                                    event.getX()
+                                            -
+                                            downX
+                            );
+
+                    final float dy =
+                            Math.abs(
+                                    event.getY()
+                                            -
+                                            downY
+                            );
+
+
+                    if (
+                            dx > touchSlop
+                                    ||
+                                    dy > touchSlop
+                    ) {
+
+                        cancelPendingLongPress();
+                    }
+                }
+
+
+                if (speedBoostActive) {
+                    return true;
+                }
+
+
+            } else if (
+                    action
+                            ==
+                            MotionEvent.ACTION_UP
+                            ||
+                            action
+                                    ==
+                                    MotionEvent.ACTION_CANCEL
+            ) {
+
+                final boolean wasBoosting =
+                        speedBoostActive;
+
+
+                cancelPendingLongPress();
+
+
+                if (wasBoosting) {
+
+                    endSpeedBoost();
+
+                    return true;
+                }
+            }
+
+
+            return super.dispatchTouchEvent(
+                    event
+            );
+        }
+
+
+        private boolean isSpeedGestureArea(
+                MotionEvent event
+        ) {
+
+            /*
+             * Reserva a zona inferior para a barra de progresso
+             * e restantes controlos do Media3.
+             *
+             * O gesto 2× fica disponível no resto da imagem.
+             */
+            return event.getY()
+                    <
+                    getHeight()
+                            *
+                            0.72f;
+        }
+
+
+        private void beginSpeedBoost() {
+
+            if (
+                    !trackingLongPress
+                            ||
+                            player == null
+            ) {
+                return;
+            }
+
+
+            speedBeforeBoost =
+                    player
+                            .getPlaybackParameters()
+                            .speed;
+
+
+            /*
+             * Cancela qualquer toque que tenha começado num controlo
+             * antes de transformar o gesto num "manter para 2×".
+             */
+            MotionEvent cancelEvent =
+                    MotionEvent.obtain(
+                            android.os.SystemClock
+                                    .uptimeMillis(),
+                            android.os.SystemClock
+                                    .uptimeMillis(),
+                            MotionEvent.ACTION_CANCEL,
+                            downX,
+                            downY,
+                            0
+                    );
+
+
+            try {
+
+                super.dispatchTouchEvent(
+                        cancelEvent
+                );
+
+            } finally {
+
+                cancelEvent.recycle();
+            }
+
+
+            try {
+
+                player.setPlaybackParameters(
+                        new PlaybackParameters(
+                                2.0f
+                        )
+                );
+
+                speedBoostActive = true;
+
+                hideController();
+
+                setSpeedIndicatorVisible(
+                        true
+                );
+
+                haptic(
+                        18
+                );
+
+            } catch (Exception ignored) {
+
+                speedBoostActive = false;
+
+                setSpeedIndicatorVisible(
+                        false
+                );
+            }
+        }
+
+
+        private void endSpeedBoost() {
+
+            if (!speedBoostActive) {
+                return;
+            }
+
+
+            try {
+
+                if (player != null) {
+
+                    player.setPlaybackParameters(
+                            new PlaybackParameters(
+                                    speedBeforeBoost
+                            )
+                    );
+                }
+
+            } catch (Exception ignored) {
+            }
+
+
+            speedBoostActive = false;
+
+            setSpeedIndicatorVisible(
+                    false
+            );
+        }
+
+
+        private void cancelPendingLongPress() {
+
+            trackingLongPress = false;
+
+            removeCallbacks(
+                    longPressRunnable
+            );
+        }
+
+
+        void cancelSpeedGesture() {
+
+            cancelPendingLongPress();
+
+            endSpeedBoost();
+        }
     }
 
 
@@ -1105,6 +1453,12 @@ public final class MainActivity extends Activity {
 
     private void closePlayerOnly() {
 
+        if (playerView != null) {
+
+            playerView.cancelSpeedGesture();
+        }
+
+
         if (player != null) {
 
             player.stop();
@@ -1198,6 +1552,12 @@ public final class MainActivity extends Activity {
         }
 
 
+        if (playerView != null) {
+
+            playerView.cancelSpeedGesture();
+        }
+
+
         if (player != null) {
             player.pause();
         }
@@ -1275,6 +1635,7 @@ public final class MainActivity extends Activity {
         videoOverlay = null;
         playerView = null;
         videoStatus = null;
+        speedIndicator = null;
         rootLayout = null;
 
 
