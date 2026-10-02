@@ -1142,7 +1142,7 @@ public final class MainActivity extends Activity {
                         true
                 );
 
-                haptic(
+                MainActivity.this.vibrate(
                         18
                 );
 
