@@ -10,14 +10,15 @@ android {
         applicationId 'mz.nader.hipertrofiapro'
         minSdk 24
         targetSdk 36
-        versionCode 7
-        versionName '7.0.0'
+        versionCode 8
+        versionName '7.1.0'
     }
 
     buildTypes {
         debug {
             minifyEnabled false
         }
+
         release {
             minifyEnabled true
             shrinkResources true
@@ -39,4 +40,8 @@ android {
 
 dependencies {
     implementation 'androidx.webkit:webkit:1.16.0'
+
+    def media3_version = "1.11.1"
+    implementation "androidx.media3:media3-exoplayer:$media3_version"
+    implementation "androidx.media3:media3-ui:$media3_version"
 }
