@@ -514,7 +514,31 @@ function bindWorkoutSession(s){
   root.querySelectorAll('[data-action="toggle-set"]').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleSet(s,b.dataset.set);});
   root.querySelectorAll('[data-action="set-note"]').forEach(b=>b.onclick=e=>{e.stopPropagation();openSetNoteModal(s,b.dataset.set);});
   root.querySelectorAll('[data-action="toggle-details"]').forEach(b=>b.onclick=e=>{e.stopPropagation();b.parentElement.querySelector('[data-details]').classList.toggle('open');});
-  root.querySelectorAll('[data-action="technique-search"]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();const ex=s.exercises.find(x=>x.exerciseId===b.closest('.exercise-card').dataset.ex);if(ex)openExternal('https://www.youtube.com/results?search_query='+encodeURIComponent(ex.name+' execução técnica'));});
+  root.querySelectorAll('[data-action="technique-search"]').forEach(b=>{
+    b.onclick=ev=>{
+      ev.stopPropagation();
+
+      const card=b.closest('.exercise-card');
+      if(!card)return;
+
+      const ex=s.exercises.find(x=>x.exerciseId===card.dataset.ex);
+      if(!ex)return;
+
+      if(
+        ex.exerciseId==='thu-hipthrust' &&
+        window.NativeBridge &&
+        typeof window.NativeBridge.openTechniqueVideo==='function'
+      ){
+        window.NativeBridge.openTechniqueVideo(ex.exerciseId);
+        return;
+      }
+
+      openExternal(
+        'https://www.youtube.com/results?search_query='+
+        encodeURIComponent(ex.name+' execução técnica')
+      );
+    };
+  });
   root.querySelectorAll('[data-action="defer"]').forEach(b=>b.onclick=e=>{e.stopPropagation();const ex=s.exercises.find(x=>x.exerciseId===b.closest('.exercise-card').dataset.ex);ex.status='deferred';advanceAfterStatus(s,ex);persist(true);render();});
   root.querySelectorAll('[data-action="skip"]').forEach(b=>b.onclick=e=>{e.stopPropagation();openSkipModal(s,b.closest('.exercise-card').dataset.ex);});
   root.querySelectorAll('[data-action="reopen"]').forEach(b=>b.onclick=e=>{e.stopPropagation();const ex=s.exercises.find(x=>x.exerciseId===b.closest('.exercise-card').dataset.ex);ex.status='pending';state.ui.expandedExerciseId=ex.exerciseId;persist(true);render();});
