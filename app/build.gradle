@@ -10,8 +10,8 @@ android {
         applicationId 'mz.nader.hipertrofiapro'
         minSdk 24
         targetSdk 36
-        versionCode 12
-        versionName '7.1.4'
+        versionCode 13
+        versionName '7.2.0'
     }
 
     buildTypes {
