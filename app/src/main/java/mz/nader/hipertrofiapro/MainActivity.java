@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Insets;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -57,7 +58,7 @@ public final class MainActivity extends Activity {
     private static final String APP_URL =
             "https://appassets.androidplatform.net/assets/www/index.html";
 
-    private static final String APP_VERSION = "7.2.0";
+    private static final String APP_VERSION = "8.0.0";
 
     private static final int REQ_CREATE_BACKUP = 5001;
     private static final int REQ_OPEN_BACKUP = 5002;
@@ -130,7 +131,7 @@ public final class MainActivity extends Activity {
 
         webView = new WebView(this);
 
-        webView.setBackgroundColor(0xFF0B0D14);
+        webView.setBackgroundColor(0xFF050505);
         webView.setVerticalScrollBarEnabled(false);
 
         /*
@@ -770,9 +771,13 @@ public final class MainActivity extends Activity {
                 dp(14),
                 dp(8)
         );
-        speedIndicator.setBackgroundColor(
-                0xAA000000
-        );
+        GradientDrawable speedBackground =
+                new GradientDrawable();
+        speedBackground.setColor(0xD91B1B1D);
+        speedBackground.setCornerRadius(dp(18));
+        speedBackground.setStroke(dp(1), 0x32FFFFFF);
+        speedIndicator.setBackground(speedBackground);
+        speedIndicator.setElevation(dp(10));
         speedIndicator.setVisibility(
                 View.GONE
         );
@@ -851,9 +856,12 @@ public final class MainActivity extends Activity {
                 Gravity.CENTER
         );
 
-        closeButton.setBackgroundColor(
-                0x99000000
-        );
+        GradientDrawable closeBackground =
+                new GradientDrawable();
+        closeBackground.setShape(GradientDrawable.OVAL);
+        closeBackground.setColor(0xC21A1A1C);
+        closeBackground.setStroke(dp(1), 0x35FFFFFF);
+        closeButton.setBackground(closeBackground);
 
         closeButton.setElevation(
                 dp(8)
@@ -1549,11 +1557,22 @@ public final class MainActivity extends Activity {
 
         closePlayerOnly();
 
+        videoOverlay.animate().cancel();
+        videoOverlay.setAlpha(0f);
+        videoOverlay.setScaleX(0.985f);
+        videoOverlay.setScaleY(0.985f);
         videoOverlay.setVisibility(
                 View.VISIBLE
         );
 
         videoOverlay.bringToFront();
+        videoOverlay.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(180L)
+                .start();
+        vibrate(8);
 
         setVideoStatus(
                 "A carregar vídeo…",
@@ -1756,10 +1775,27 @@ public final class MainActivity extends Activity {
 
 
         if (videoOverlay != null) {
-
-            videoOverlay.setVisibility(
-                    View.GONE
-            );
+            videoOverlay.animate().cancel();
+            if (videoOverlay.getVisibility() == View.VISIBLE) {
+                videoOverlay.animate()
+                        .alpha(0f)
+                        .scaleX(0.985f)
+                        .scaleY(0.985f)
+                        .setDuration(145L)
+                        .withEndAction(() -> {
+                            videoOverlay.setVisibility(View.GONE);
+                            videoOverlay.setAlpha(1f);
+                            videoOverlay.setScaleX(1f);
+                            videoOverlay.setScaleY(1f);
+                        })
+                        .start();
+                vibrate(6);
+            } else {
+                videoOverlay.setVisibility(View.GONE);
+                videoOverlay.setAlpha(1f);
+                videoOverlay.setScaleX(1f);
+                videoOverlay.setScaleY(1f);
+            }
         }
 
 
