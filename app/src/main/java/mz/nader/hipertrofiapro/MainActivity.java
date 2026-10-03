@@ -47,15 +47,17 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class MainActivity extends Activity {
 
     private static final String APP_URL =
             "https://appassets.androidplatform.net/assets/www/index.html";
 
-    private static final String APP_VERSION = "7.1.3";
+    private static final String APP_VERSION = "7.1.4";
 
     private static final int REQ_CREATE_BACKUP = 5001;
     private static final int REQ_OPEN_BACKUP = 5002;
@@ -64,14 +66,6 @@ public final class MainActivity extends Activity {
     private static final long MAX_IMPORT_BYTES =
             8L * 1024L * 1024L;
 
-    /*
-     * PRIMEIRO VÍDEO DE TESTE
-     *
-     * Local:
-     * app/src/main/assets/videos/
-     */
-    private static final String HIP_THRUST_VIDEO =
-            "Hip Thrust Machine (Plate-loaded) - Team Royal Training (1080p).mp4";
 
     private WebView webView;
 
@@ -1233,6 +1227,7 @@ public final class MainActivity extends Activity {
     }
 
 
+
     private boolean assetExists(
             String assetPath
     ) {
@@ -1253,45 +1248,307 @@ public final class MainActivity extends Activity {
     }
 
 
-    private void openTechniqueVideo(
+    /*
+     * Os vídeos mantêm os nomes originais enviados para assets/videos.
+     *
+     * Cada exercício é associado por um conjunto de palavras únicas.
+     * Isto evita renomear 41 ficheiros e também permite que os dois
+     * exercícios repetidos de sexta reutilizem o mesmo vídeo físico.
+     */
+    private String[] requiredVideoTokens(
             String exerciseId
     ) {
 
-        /*
-         * PRIMEIRO TESTE:
-         *
-         * Apenas Hip Thrust.
-         *
-         * Depois de confirmarmos que funciona,
-         * mapeamos todos os restantes vídeos.
-         */
-
-        if (
-                !"thu-hipthrust"
-                        .equals(exerciseId)
-        ) {
-
-            Toast.makeText(
-                    this,
-                    "Vídeo ainda não associado.",
-                    Toast.LENGTH_SHORT
-            ).show();
-
-            return;
+        if (exerciseId == null) {
+            return null;
         }
 
+        return switch (exerciseId) {
+
+            // SEGUNDA
+            case "mon-smith" ->
+                    new String[]{"hack", "squat", "machine"};
+
+            case "mon-legpress" ->
+                    new String[]{"perfect", "leg", "press"};
+
+            case "mon-legcurl-seated" ->
+                    new String[]{"seated", "leg", "curl", "correctly", "exit"};
+
+            case "mon-extension" ->
+                    new String[]{"beinstrecker", "maschine"};
+
+            case "mon-adductor" ->
+                    new String[]{"hip", "adduction", "machine", "perfect", "technique"};
+
+            case "mon-calves" ->
+                    new String[]{"machine", "standing", "calf", "raise"};
+
+            case "mon-tibialis" ->
+                    new String[]{"tibialis", "raises", "why"};
+
+            case "mon-ab-supra" ->
+                    new String[]{"abdominal", "crunch", "hammer", "strength"};
+
+            case "mon-legraise" ->
+                    new String[]{"captain", "chair", "knee", "raise"};
+
+
+            // TERÇA
+            case "tue-incline", "fri-incline" ->
+                    new String[]{"incline", "chest", "press", "exercise", "form", "guide"};
+
+            case "tue-flat" ->
+                    new String[]{"life", "fitness", "signature", "chest", "press", "instructions"};
+
+            case "tue-fly" ->
+                    new String[]{"pec", "deck", "machine", "60", "seconds"};
+
+            case "tue-lateral" ->
+                    new String[]{"seated", "machine", "lat", "demonstration", "guide"};
+
+            case "tue-shoulderpress" ->
+                    new String[]{"perform", "machine", "shoulder", "press"};
+
+            case "tue-reversefly" ->
+                    new String[]{"reverse", "pec", "deck", "shoulder", "health"};
+
+            case "tue-ohtri" ->
+                    new String[]{"standing", "overhead", "cable", "triceps", "extension", "rope"};
+
+            case "tue-pushdown", "fri-pushdown" ->
+                    new String[]{"properly", "tricep", "rope", "mistake"};
+
+            case "tue-reversepush" ->
+                    new String[]{"reverse", "grip", "pushdown", "life", "fitness"};
+
+
+            // QUARTA
+            case "wed-neutral-pd" ->
+                    new String[]{"mag", "grip", "lat", "pulldown"};
+
+            case "wed-close-row" ->
+                    new String[]{"seated", "cable", "rows", "bodybuilding"};
+
+            case "wed-chestsupported-row" ->
+                    new String[]{"plate", "loaded", "row", "pronated", "grip"};
+
+            case "wed-straightarm-pd" ->
+                    new String[]{"straight", "arm", "rope", "pulldown"};
+
+            case "wed-seated-calves" ->
+                    new String[]{"seated", "calf", "raise", "machine"};
+
+            case "wed-scott" ->
+                    new String[]{"preacher", "curl", "machine"};
+
+            case "wed-bayesian" ->
+                    new String[]{"bayesian", "cable", "curl"};
+
+            case "wed-hammer" ->
+                    new String[]{"properly", "dumbbell", "hammer", "curl"};
+
+            case "wed-reversecurl" ->
+                    new String[]{"hunter", "labrada", "reverse", "ez", "bar", "curl"};
+
+            case "wed-wristflex" ->
+                    new String[]{"seated", "barbell", "wrist", "curl"};
+
+
+            // QUINTA
+            case "thu-hipthrust" ->
+                    new String[]{"hip", "thrust", "machine", "plate", "loaded", "team", "royal"};
+
+            case "thu-legcurl-seated" ->
+                    new String[]{"seated", "leg", "curls", "stronger", "hamstrings"};
+
+            case "thu-legpress" ->
+                    new String[]{"machine", "leg", "press", "horizontal"};
+
+            case "thu-rearkick" ->
+                    new String[]{"rear", "glute", "kick", "machine"};
+
+            case "thu-abductor" ->
+                    new String[]{"seated", "hip", "abductor", "outer", "thigh"};
+
+            case "thu-backextension" ->
+                    new String[]{"seated", "back", "extension", "tutorial", "beginners"};
+
+            case "thu-sidebend" ->
+                    new String[]{"ab", "coaster", "obliques"};
+
+
+            // SEXTA
+            case "fri-flat" ->
+                    new String[]{"hammer", "strength", "correct", "form", "positioning"};
+
+            case "fri-neutral-pd" ->
+                    new String[]{"underhand", "lat", "pulldown", "exercise", "library"};
+
+            case "fri-open-row" ->
+                    new String[]{"wide", "grip", "seated", "cable", "row"};
+
+            case "fri-lateral" ->
+                    new String[]{"elevacao", "unilateral", "polia", "jeito", "certo", "fazer"};
+
+            case "fri-shrug" ->
+                    new String[]{"properly", "dumbbell", "shrug"};
+
+            case "fri-barcurl" ->
+                    new String[]{"ez", "bar", "curl", "easy", "minute", "tutorial"};
+
+            /*
+             * wed-wristext está inactivo no plano final e deliberadamente
+             * não recebe vídeo.
+             */
+            default ->
+                    null;
+        };
+    }
+
+
+    private String normalizeVideoName(
+            String value
+    ) {
+
+        if (value == null) {
+            return "";
+        }
+
+        String normalized =
+                Normalizer.normalize(
+                        value,
+                        Normalizer.Form.NFD
+                )
+                        .replaceAll(
+                                "\\p{M}+",
+                                ""
+                        )
+                        .toLowerCase(
+                                Locale.ROOT
+                        )
+                        .replaceAll(
+                                "[^a-z0-9]+",
+                                " "
+                        )
+                        .trim();
+
+        return normalized.replaceAll(
+                "\\s+",
+                " "
+        );
+    }
+
+
+    private boolean filenameContainsEveryToken(
+            String normalizedFilename,
+            String[] tokens
+    ) {
+
+        if (
+                normalizedFilename == null
+                        ||
+                        tokens == null
+                        ||
+                        tokens.length == 0
+        ) {
+            return false;
+        }
+
+        for (String token : tokens) {
+
+            String normalizedToken =
+                    normalizeVideoName(
+                            token
+                    );
+
+            if (
+                    normalizedToken.isEmpty()
+                            ||
+                            !normalizedFilename.contains(
+                                    normalizedToken
+                            )
+            ) {
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    private String resolveVideoFilename(
+            String exerciseId
+    ) {
+
+        String[] tokens =
+                requiredVideoTokens(
+                        exerciseId
+                );
+
+        if (tokens == null) {
+            return null;
+        }
+
+        try {
+
+            String[] files =
+                    getAssets().list(
+                            "videos"
+                    );
+
+            if (files == null) {
+                return null;
+            }
+
+            for (String filename : files) {
+
+                if (
+                        filename == null
+                                ||
+                                !filename
+                                        .toLowerCase(
+                                                Locale.ROOT
+                                        )
+                                        .endsWith(
+                                                ".mp4"
+                                        )
+                ) {
+                    continue;
+                }
+
+                String normalized =
+                        normalizeVideoName(
+                                filename
+                        );
+
+                if (
+                        filenameContainsEveryToken(
+                                normalized,
+                                tokens
+                        )
+                ) {
+
+                    return filename;
+                }
+            }
+
+        } catch (Exception ignored) {
+        }
+
+        return null;
+    }
+
+
+    private void openTechniqueVideo(
+            String exerciseId
+    ) {
 
         ensureVideoOverlay();
 
         closePlayerOnly();
 
-
-        /*
-         * Mostrar primeiro o overlay.
-         *
-         * Assim, mesmo que o ficheiro esteja ausente ou exista um erro
-         * de codec, o utilizador vê imediatamente o player/diagnóstico.
-         */
         videoOverlay.setVisibility(
                 View.VISIBLE
         );
@@ -1306,10 +1563,33 @@ public final class MainActivity extends Activity {
         setKeepScreenOn(true);
 
 
+        String videoFilename =
+                resolveVideoFilename(
+                        exerciseId
+                );
+
+
+        if (videoFilename == null) {
+
+            setVideoStatus(
+                    "Vídeo não encontrado para este exercício.",
+                    true
+            );
+
+            Toast.makeText(
+                    this,
+                    "Não encontrei o vídeo associado em assets/videos.",
+                    Toast.LENGTH_LONG
+            ).show();
+
+            return;
+        }
+
+
         String assetPath =
                 "videos/"
                         +
-                        HIP_THRUST_VIDEO;
+                        videoFilename;
 
 
         if (
@@ -1319,13 +1599,13 @@ public final class MainActivity extends Activity {
         ) {
 
             setVideoStatus(
-                    "Vídeo não encontrado nesta build.",
+                    "O vídeo associado não está disponível nesta build.",
                     true
             );
 
             Toast.makeText(
                     this,
-                    "O ficheiro do Hip Thrust não está dentro de assets/videos.",
+                    "O ficheiro associado não foi incluído no APK.",
                     Toast.LENGTH_LONG
             ).show();
 
@@ -1333,20 +1613,12 @@ public final class MainActivity extends Activity {
         }
 
 
-        /*
-         * Formato oficial suportado pelo DefaultDataSource do Media3:
-         *
-         * asset:///caminho/do/ficheiro
-         *
-         * O nome é codificado para suportar espaços, parênteses e outros
-         * caracteres sem alterar o nome real do ficheiro no GitHub.
-         */
         Uri videoUri =
                 Uri.parse(
                         "asset:///videos/"
                                 +
                                 Uri.encode(
-                                        HIP_THRUST_VIDEO
+                                        videoFilename
                                 )
                 );
 
