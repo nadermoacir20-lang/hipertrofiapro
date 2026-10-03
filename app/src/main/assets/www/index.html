@@ -43,16 +43,6 @@ button{cursor:pointer}
 .set-list{display:grid;gap:8px}.set-row{display:grid;grid-template-columns:75px minmax(0,1fr) minmax(0,1fr) 40px 42px;gap:7px;align-items:center;padding:9px;border-radius:15px;background:#101520;border:1px solid #212a3a;transition:.22s}.set-row.current{border-color:#5558d8;background:linear-gradient(90deg,rgba(111,108,255,.12),#101520)}.set-row.done{opacity:.72;background:#101a18;border-color:#1d3c31}.set-label{font-size:11px;font-weight:950;color:#aab4c9}.set-row.warmup .set-label{color:#f0bd6c}.set-input{width:100%;min-width:0;border:1px solid #2b3448;background:#0d111a;color:white;border-radius:11px;padding:10px 8px;outline:none;text-align:center;font-weight:850}.set-input:focus{border-color:#6969ef;box-shadow:0 0 0 3px rgba(105,105,239,.10)}.set-input::placeholder{color:#596274}.set-check,.note-btn{width:40px;height:40px;border-radius:12px;border:1px solid #2b3448;background:#171e2d;color:#9ea8bd;font-weight:950;display:grid;place-items:center}.set-check.done{background:#16382b;color:#76e5b3;border-color:#2b664e}.note-btn.has-note{color:#d7c0ff;border-color:#6851a2;background:#211b32}.unilateral-reps{display:grid;grid-template-columns:1fr 1fr;gap:5px}.unilateral-reps input{padding:10px 3px}.field-caption{font-size:9px;color:#778198;text-align:center;margin-top:2px}
 .target-strip{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 9px}.target-chip{font-size:11px;color:#b9c3d7;background:#161c29;border:1px solid #283145;border-radius:999px;padding:6px 8px}
 /* Mapa corporal visual. Só é renderizado para o exercício expandido. */
-.muscle-map{position:relative;overflow:hidden;margin:2px 0 12px;padding:10px 10px 8px;border:1px solid #2a3348;border-radius:18px;background:radial-gradient(circle at 18% 0%,rgba(156,108,255,.14),transparent 42%),linear-gradient(145deg,#111725,#0d121d);animation:fadeUp .22s ease}
-.muscle-map:after{content:"";position:absolute;width:120px;height:120px;right:-46px;bottom:-67px;border-radius:50%;background:radial-gradient(circle,rgba(77,156,255,.10),transparent 70%);pointer-events:none}
-.muscle-map-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 4px;position:relative;z-index:1}
-.muscle-map-title{font-size:10px;font-weight:950;letter-spacing:.14em;color:#b5bdd0;text-transform:uppercase}
-.muscle-map-key{display:flex;align-items:center;gap:9px;color:#7f899e;font-size:9px;font-weight:850;white-space:nowrap}.muscle-map-key span{display:flex;align-items:center;gap:4px}.muscle-map-key i{display:block;width:7px;height:7px;border-radius:50%}.muscle-map-key .main{background:#a16dff;box-shadow:0 0 8px rgba(161,109,255,.58)}.muscle-map-key .assist{background:#4d9cff;box-shadow:0 0 7px rgba(77,156,255,.40)}
-.muscle-map-stage{height:150px;display:grid;place-items:center;position:relative;z-index:1}.muscle-map-svg{display:block;width:100%;height:100%;max-width:340px;overflow:visible}
-.muscle-map-svg .body-base{fill:#222a3a;stroke:#3d485f;stroke-width:1.15;vector-effect:non-scaling-stroke}.muscle-map-svg .body-line{fill:none;stroke:#56627a;stroke-width:.8;opacity:.48;vector-effect:non-scaling-stroke}
-.muscle-map-svg .zone{fill:#39445a;opacity:.13;stroke:rgba(255,255,255,.04);stroke-width:.6;vector-effect:non-scaling-stroke;pointer-events:none}.muscle-map-svg .zone.primary{fill:#a16dff;opacity:.98;filter:drop-shadow(0 0 4px rgba(161,109,255,.50))}.muscle-map-svg .zone.secondary{fill:#4d9cff;opacity:.64;filter:drop-shadow(0 0 3px rgba(77,156,255,.34))}
-.muscle-map-svg .body-caption{font-size:8px;font-weight:900;letter-spacing:.12em;fill:#707c94;text-anchor:middle}.exercise-card.completed .muscle-map{opacity:.72}.exercise-card.current .muscle-map{border-color:#465277}
-@media(max-width:520px){.muscle-map{padding:9px 8px 7px}.muscle-map-stage{height:142px}.muscle-map-key{gap:6px;font-size:8px}}
 .details-toggle{width:100%;margin-top:10px;border:0;background:transparent;color:#909bb2;font-size:12px;font-weight:850;padding:8px}.details{display:none;margin-top:8px;padding:11px;background:#0f141e;border:1px solid #222b3b;border-radius:14px;color:#b3bdd0;font-size:12px;line-height:1.45}.details.open{display:block;animation:fadeUp .22s ease}.details strong{color:#e8ebf4}.exercise-note{width:100%;min-height:68px;margin-top:8px;resize:vertical;border:1px solid #2b3448;background:#0d111a;color:white;border-radius:13px;padding:10px;outline:none}.exercise-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.exercise-actions button{flex:1;padding:9px 10px;border-radius:12px;font-size:12px;min-width:100px}
 .rest-dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(85px + env(safe-area-inset-bottom));z-index:60;width:min(94vw,560px);background:#171c2a;border:1px solid #343d54;border-radius:20px;padding:10px 12px;box-shadow:0 16px 46px rgba(0,0,0,.5);transition:.25s cubic-bezier(.2,.8,.2,1)}.rest-dock.hidden{opacity:0;pointer-events:none;transform:translate(-50%,18px)}.rest-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.rest-time{font-size:24px;font-weight:950;letter-spacing:.02em}.rest-time.over{color:#ffcf75}.rest-next{font-size:11px;color:#9ba5ba;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rest-bar{height:5px;background:#202738;border-radius:999px;margin:8px 0;overflow:hidden}.rest-bar span{height:100%;display:block;border-radius:inherit;background:linear-gradient(90deg,var(--violet),var(--blue));transition:width .5s linear}.rest-controls{display:flex;gap:7px}.rest-controls button{padding:7px 9px;font-size:11px;border-radius:10px}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#111722;border:1px solid #232c3d;border-radius:18px;padding:13px}.stat .value{font-size:22px;font-weight:950;margin-top:4px}.stat .label{font-size:11px;color:#909ab0}.section-title{margin:20px 2px 8px;font-size:15px}.section-title:first-child{margin-top:4px}
@@ -99,7 +89,7 @@ hr.sep{border:0;border-top:1px solid #252d3e;margin:14px 0}
 
   <script>
 window.HP_CONFIG = {
-  build: "v7.1.3-android-muscle-map-1",
+  build: "v7.1.4-android-all-videos-1",
   productionAuthRequired: true,
   googleCloudConfigured: false,
   googleClientId: "",
@@ -111,7 +101,7 @@ window.HP_CONFIG = {
 (() => {
 'use strict';
 
-const VERSION = '7.1.3';
+const VERSION = '7.1.4';
 const SCHEMA = 7;
 const KEY = 'hipertrofia_pro_v7_state';
 const SNAP_PREFIX = 'hipertrofia_pro_v7_snapshot_';
@@ -1310,7 +1300,6 @@ function exerciseHTML(s,e,i,nextId){
     </div>
     <div class="exercise-body"><div><div class="exercise-inner">
       <div class="target-strip"><span class="target-chip">Carga: ${esc(fmtLoad(e.targetWeight,e.loadMode,true))}</span><span class="target-chip">Reps: ${esc(e.targetReps||'livres')}</span><span class="target-chip">Descanso: ${Math.round((e.rest||0)/60*10)/10} min</span></div>
-      ${expanded?muscleMapHTML(e.exerciseId):''}
       <div class="set-list">${e.sets.map((set,si)=>setRowHTML(e,set,si)).join('')}</div>
       <button class="details-toggle" data-action="toggle-details">Detalhes · técnica · histórico anterior</button>
       <div class="details" data-details>${detailsHTML(s,e,planEx)}<br><button class="ghost" data-action="technique-search" style="width:100%;margin-top:8px">Técnica em vídeo</button></div>
@@ -1320,134 +1309,6 @@ function exerciseHTML(s,e,i,nextId){
       </div>
     </div></div></div>
   </article>`;
-}
-
-// Mapa intencionalmente visual: os nomes anatómicos ficam apenas no código.
-// Roxo = região que recebe a maior ênfase nesta execução; azul = participação relevante.
-const MUSCLE_PROFILES = Object.freeze({
-  'mon-smith':{primary:['quads'],secondary:['glutes','adductors']},
-  'mon-legpress':{primary:['quads'],secondary:['glutes','adductors']},
-  'mon-legcurl-seated':{primary:['hamstrings'],secondary:['calves']},
-  'mon-extension':{primary:['quads'],secondary:[]},
-  'mon-adductor':{primary:['adductors'],secondary:[]},
-  'mon-calves':{primary:['calves'],secondary:[]},
-  'mon-tibialis':{primary:['tibialis'],secondary:[]},
-  'mon-ab-supra':{primary:['abs'],secondary:['obliques']},
-  'mon-legraise':{primary:['abs'],secondary:['hipFlexors','obliques']},
-
-  'tue-incline':{primary:['upperChest'],secondary:['chest','frontShoulders','triceps']},
-  'tue-flat':{primary:['chest'],secondary:['frontShoulders','triceps']},
-  'tue-fly':{primary:['chest'],secondary:['frontShoulders']},
-  'tue-lateral':{primary:['sideShoulders'],secondary:['traps']},
-  'tue-shoulderpress':{primary:['frontShoulders','sideShoulders'],secondary:['triceps']},
-  'tue-reversefly':{primary:['rearShoulders'],secondary:['upperBack','traps']},
-  'tue-ohtri':{primary:['triceps'],secondary:[]},
-  'tue-pushdown':{primary:['triceps'],secondary:[]},
-  'tue-reversepush':{primary:['triceps'],secondary:[]},
-
-  'wed-neutral-pd':{primary:['lats'],secondary:['biceps','upperBack','rearShoulders']},
-  'wed-close-row':{primary:['lats','upperBack'],secondary:['biceps','rearShoulders']},
-  'wed-chestsupported-row':{primary:['upperBack','rearShoulders'],secondary:['lats','biceps']},
-  'wed-straightarm-pd':{primary:['lats'],secondary:['triceps','rearShoulders']},
-  'wed-seated-calves':{primary:['calves'],secondary:[]},
-  'wed-scott':{primary:['biceps'],secondary:['forearmFlexors']},
-  'wed-bayesian':{primary:['biceps'],secondary:['forearmFlexors']},
-  'wed-hammer':{primary:['biceps'],secondary:['forearmExtensors']},
-  'wed-reversecurl':{primary:['forearmExtensors'],secondary:['biceps']},
-  'wed-wristflex':{primary:['forearmFlexors'],secondary:[]},
-  'wed-wristext':{primary:['forearmExtensors'],secondary:[]},
-
-  'thu-hipthrust':{primary:['glutes'],secondary:['hamstrings','adductors']},
-  'thu-legcurl-seated':{primary:['hamstrings'],secondary:['calves']},
-  'thu-legpress':{primary:['quads'],secondary:['glutes','adductors']},
-  'thu-rearkick':{primary:['glutes'],secondary:['hamstrings']},
-  'thu-abductor':{primary:['abductors'],secondary:['glutes']},
-  'thu-backextension':{primary:['lowerBack'],secondary:['glutes','hamstrings']},
-  'thu-sidebend':{primary:['obliques'],secondary:['abs']},
-
-  'fri-incline':{primary:['upperChest'],secondary:['chest','frontShoulders','triceps']},
-  'fri-flat':{primary:['lowerChest'],secondary:['chest','frontShoulders','triceps']},
-  'fri-neutral-pd':{primary:['lats'],secondary:['biceps','upperBack']},
-  'fri-open-row':{primary:['upperBack','rearShoulders'],secondary:['lats','biceps']},
-  'fri-lateral':{primary:['sideShoulders'],secondary:['traps']},
-  'fri-shrug':{primary:['traps'],secondary:[]},
-  'fri-barcurl':{primary:['biceps'],secondary:['forearmFlexors']},
-  'fri-pushdown':{primary:['triceps'],secondary:[]}
-});
-
-function muscleZoneClass(profile,key){
-  if(profile.primary.includes(key))return 'zone primary';
-  if(profile.secondary.includes(key))return 'zone secondary';
-  return 'zone';
-}
-
-function muscleMapHTML(exerciseId){
-  const profile=MUSCLE_PROFILES[exerciseId];
-  if(!profile)return '';
-  const z=k=>muscleZoneClass(profile,k);
-  return `<section class="muscle-map" aria-label="Mapa visual das zonas trabalhadas neste exercício">
-    <div class="muscle-map-head">
-      <div class="muscle-map-title">Onde trabalha</div>
-      <div class="muscle-map-key" aria-hidden="true"><span><i class="main"></i>mais</span><span><i class="assist"></i>também</span></div>
-    </div>
-    <div class="muscle-map-stage">
-      <svg class="muscle-map-svg" viewBox="0 0 280 205" role="img" aria-label="Corpo visto de frente e de costas com as regiões deste exercício destacadas">
-        <!-- Frente -->
-        <g>
-          <text class="body-caption" x="72" y="202">FRENTE</text>
-          <circle class="body-base" cx="72" cy="17" r="10"/>
-          <path class="body-base" d="M66 27h12l2 10c8 2 14 7 17 16l8 29c2 8-7 11-10 4l-9-25-2 37-7 23 3 70H64l3-70-7-23-2-37-9 25c-3 7-12 4-10-4l8-29c3-9 9-14 17-16z"/>
-          <path class="body-line" d="M72 37v84M61 59h22M62 99h20M72 121l-8 70M72 121l8 70"/>
-
-          <ellipse class="${z('frontShoulders')}" cx="53" cy="49" rx="7.4" ry="6.4"/>
-          <ellipse class="${z('frontShoulders')}" cx="91" cy="49" rx="7.4" ry="6.4"/>
-          <ellipse class="${z('sideShoulders')}" cx="49" cy="52" rx="4.7" ry="8.2"/>
-          <ellipse class="${z('sideShoulders')}" cx="95" cy="52" rx="4.7" ry="8.2"/>
-          <path class="${z('upperChest')}" d="M59 50q13-8 26 0l-2 10q-11-5-22 0z"/>
-          <path class="${z('chest')}" d="M59 59q13-5 26 0l-2 14q-11 6-22 0z"/>
-          <path class="${z('lowerChest')}" d="M61 70q11 6 22 0l-3 9q-8 5-16 0z"/>
-          <ellipse class="${z('biceps')}" cx="46" cy="70" rx="4.2" ry="10" transform="rotate(14 46 70)"/>
-          <ellipse class="${z('biceps')}" cx="98" cy="70" rx="4.2" ry="10" transform="rotate(-14 98 70)"/>
-          <ellipse class="${z('forearmFlexors')}" cx="40" cy="91" rx="3.5" ry="10" transform="rotate(15 40 91)"/>
-          <ellipse class="${z('forearmFlexors')}" cx="104" cy="91" rx="3.5" ry="10" transform="rotate(-15 104 91)"/>
-          <ellipse class="${z('forearmExtensors')}" cx="38" cy="91" rx="2.6" ry="9" transform="rotate(15 38 91)"/>
-          <ellipse class="${z('forearmExtensors')}" cx="106" cy="91" rx="2.6" ry="9" transform="rotate(-15 106 91)"/>
-          <path class="${z('abs')}" d="M65 75q7-3 14 0v32q-7 6-14 0z"/>
-          <path class="${z('obliques')}" d="M60 75l5 2v31l-5-8-3-18zM84 75l-5 2v31l5-8 3-18z"/>
-          <path class="${z('hipFlexors')}" d="M63 108l7 2-4 15-7-2zM81 108l-7 2 4 15 7-2z"/>
-          <path class="${z('adductors')}" d="M66 122l5 1-2 39-6-2zM78 122l-5 1 2 39 6-2z"/>
-          <path class="${z('quads')}" d="M58 122l8 1-3 42-8-3zM86 122l-8 1 3 42 8-3z"/>
-          <path class="${z('tibialis')}" d="M56 165l7 2-2 24-6-1zM88 165l-7 2 2 24 6-1z"/>
-        </g>
-
-        <!-- Costas -->
-        <g>
-          <text class="body-caption" x="208" y="202">COSTAS</text>
-          <circle class="body-base" cx="208" cy="17" r="10"/>
-          <path class="body-base" d="M202 27h12l2 10c8 2 14 7 17 16l8 29c2 8-7 11-10 4l-9-25-2 37-7 23 3 70h-16l3-70-7-23-2-37-9 25c-3 7-12 4-10-4l8-29c3-9 9-14 17-16z"/>
-          <path class="body-line" d="M208 37v84M197 59h22M198 99h20M208 121l-8 70M208 121l8 70"/>
-
-          <path class="${z('traps')}" d="M200 38q8 5 16 0l7 17-15 9-15-9z"/>
-          <ellipse class="${z('rearShoulders')}" cx="189" cy="50" rx="7.4" ry="6.4"/>
-          <ellipse class="${z('rearShoulders')}" cx="227" cy="50" rx="7.4" ry="6.4"/>
-          <path class="${z('upperBack')}" d="M194 53q14 9 28 0l-2 20q-12 9-24 0z"/>
-          <path class="${z('lats')}" d="M195 65l8 6-3 31-8-7zM221 65l-8 6 3 31 8-7z"/>
-          <ellipse class="${z('triceps')}" cx="182" cy="70" rx="4.3" ry="10" transform="rotate(14 182 70)"/>
-          <ellipse class="${z('triceps')}" cx="234" cy="70" rx="4.3" ry="10" transform="rotate(-14 234 70)"/>
-          <ellipse class="${z('forearmExtensors')}" cx="176" cy="91" rx="3.6" ry="10" transform="rotate(15 176 91)"/>
-          <ellipse class="${z('forearmExtensors')}" cx="240" cy="91" rx="3.6" ry="10" transform="rotate(-15 240 91)"/>
-          <ellipse class="${z('forearmFlexors')}" cx="178" cy="91" rx="2.5" ry="8" transform="rotate(15 178 91)"/>
-          <ellipse class="${z('forearmFlexors')}" cx="238" cy="91" rx="2.5" ry="8" transform="rotate(-15 238 91)"/>
-          <path class="${z('lowerBack')}" d="M201 89q7 4 14 0v18q-7 4-14 0z"/>
-          <ellipse class="${z('glutes')}" cx="202" cy="118" rx="9" ry="8"/>
-          <ellipse class="${z('glutes')}" cx="214" cy="118" rx="9" ry="8"/>
-          <path class="${z('abductors')}" d="M193 107q7 0 11 5l-7 14-8-5zM223 107q-7 0-11 5l7 14 8-5z"/>
-          <path class="${z('hamstrings')}" d="M194 127l9-2 1 38-9 2zM222 127l-9-2-1 38 9 2z"/>
-          <path class="${z('calves')}" d="M196 165q8 0 8 8l-3 19-8-2zM220 165q-8 0-8 8l3 19 8-2z"/>
-        </g>
-      </svg>
-    </div>
-  </section>`;
 }
 
 function fmtSessionTarget(e){return `${fmtLoad(e.targetWeight,e.loadMode,true)} · ${e.targetReps||'reps livres'} · ${e.sets.filter(s=>s.type==='work').length} séries`;}
@@ -1498,27 +1359,19 @@ function bindWorkoutSession(s){
       const ex=s.exercises.find(x=>x.exerciseId===card.dataset.ex);
       if(!ex)return;
 
-      if(ex.exerciseId==='thu-hipthrust'){
-        try{
-          if(
-            nativeAvailable() &&
-            typeof window.NativeBridge.openTechniqueVideo==='function'
-          ){
-            window.NativeBridge.openTechniqueVideo(ex.exerciseId);
-            return;
-          }
-        }catch(error){
-          console.error('Erro ao abrir player nativo:',error);
+      try{
+        if(
+          nativeAvailable() &&
+          typeof window.NativeBridge.openTechniqueVideo==='function'
+        ){
+          window.NativeBridge.openTechniqueVideo(ex.exerciseId);
+          return;
         }
-
-        toast('Player nativo indisponível nesta instalação.');
-        return;
+      }catch(error){
+        console.error('Erro ao abrir player nativo:',error);
       }
 
-      openExternal(
-        'https://www.youtube.com/results?search_query='+
-        encodeURIComponent(ex.name+' execução técnica')
-      );
+      toast('Player nativo indisponível nesta instalação.');
     };
   });
   root.querySelectorAll('[data-action="defer"]').forEach(b=>b.onclick=e=>{e.stopPropagation();const ex=s.exercises.find(x=>x.exerciseId===b.closest('.exercise-card').dataset.ex);ex.status='deferred';advanceAfterStatus(s,ex);persist(true);render();});
