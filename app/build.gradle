@@ -10,8 +10,8 @@ android {
         applicationId 'mz.nader.hipertrofiapro'
         minSdk 24
         targetSdk 36
-        versionCode 13
-        versionName '7.2.0'
+        versionCode 16
+        versionName '8.0.0'
     }
 
     buildTypes {
@@ -44,4 +44,61 @@ dependencies {
     def media3_version = "1.11.1"
     implementation "androidx.media3:media3-exoplayer:$media3_version"
     implementation "androidx.media3:media3-ui:$media3_version"
+}
+
+// Hipertrofia Pro 8 — body map segmentado, 70+ regiões, frente/costas e intensidade.
+// A biblioteca é fixada em body-muscles 1.0.0. O bundle é copiado para os assets
+// DURANTE o build; a aplicação instalada continua totalmente offline.
+def hpBodyMapVersion = '1.0.0'
+def hpBodyMapDir = file("$projectDir/src/main/assets/www/vendor")
+def hpBodyMapFile = new File(hpBodyMapDir, 'body-muscles.umd.min.js')
+def hpBodyMapUrls = [
+    "https://unpkg.com/body-muscles@${hpBodyMapVersion}/dist/umd/body-muscles.umd.min.js",
+    "https://cdn.jsdelivr.net/npm/body-muscles@${hpBodyMapVersion}/dist/umd/body-muscles.umd.min.js"
+]
+
+tasks.register('prepareBodyMapVendor') {
+    outputs.file(hpBodyMapFile)
+
+    doLast {
+        hpBodyMapDir.mkdirs()
+        String js = null
+        Exception lastError = null
+
+        for (String sourceUrl : hpBodyMapUrls) {
+            try {
+                URLConnection connection = new URL(sourceUrl).openConnection()
+                connection.setConnectTimeout(15000)
+                connection.setReadTimeout(30000)
+                connection.setRequestProperty('User-Agent', 'Hipertrofia-Pro-Android-Build/8.0')
+                String candidate = connection.getInputStream().getText('UTF-8')
+
+                if (candidate != null && candidate.length() > 20000 && candidate.contains('BodyMuscles')) {
+                    js = candidate
+                    break
+                }
+            } catch (Exception ex) {
+                lastError = ex
+            }
+        }
+
+        if (js == null) {
+            throw new GradleException(
+                "Não foi possível preparar o body map body-muscles ${hpBodyMapVersion}. " +
+                "O build foi interrompido para não gerar uma APK incompleta." +
+                (lastError != null ? " Último erro: ${lastError.message}" : "")
+            )
+        }
+
+        hpBodyMapFile.setText(js, 'UTF-8')
+
+        String saved = hpBodyMapFile.getText('UTF-8')
+        if (saved.length() < 20000 || !saved.contains('BodyMuscles')) {
+            throw new GradleException('Bundle do body map inválido após gravação.')
+        }
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn(tasks.named('prepareBodyMapVendor'))
 }
