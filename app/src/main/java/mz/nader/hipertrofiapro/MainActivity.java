@@ -58,7 +58,7 @@ public final class MainActivity extends Activity {
     private static final String APP_URL =
             "https://appassets.androidplatform.net/assets/www/index.html";
 
-    private static final String APP_VERSION = "8.0.0";
+    private static final String APP_VERSION = "8.1.0";
 
     private static final int REQ_CREATE_BACKUP = 5001;
     private static final int REQ_OPEN_BACKUP = 5002;
