@@ -255,7 +255,7 @@ window.HP_CONFIG = {
 (() => {
 'use strict';
 
-const VERSION = '8.1.0';
+const VERSION = '8.2.0';
 const SCHEMA = 7;
 const KEY = 'hipertrofia_pro_v7_state';
 const SNAP_PREFIX = 'hipertrofia_pro_v7_snapshot_';
@@ -295,8 +295,12 @@ function newerState(a,b){
 }
 
 const BASE_PLAN_REVISION = 'patch-2026-10-02-final-video-plan-r2';
+const PLAN_FORMAT_VERSION = 2;
+const PATCH_SCHEMA = 7;
 const DEFAULT_PLAN = {
   "revision": "patch-2026-10-02-final-video-plan-r2",
+  "formatVersion": 2,
+  "baseRevision": "patch-2026-10-02-final-video-plan-r2",
   "days": {
     "Segunda": {
       "title": "PERNAS A + ABDÓMEN",
@@ -1190,50 +1194,55 @@ function loadState(){
   }
   return normalizeState(s);
 }
+function planLooksLikeFinalFamily(plan){
+  if(!plan?.days||typeof plan.days!=='object')return false;
+  if(!DAYS.every(day=>plan.days[day]&&Array.isArray(plan.days[day].exercises)))return false;
+  const ids=new Set(DAYS.flatMap(day=>plan.days[day].exercises.map(e=>e?.id).filter(Boolean)));
+  // Marcadores suficientes para distinguir a família final sem impedir futuras
+  // remoções/adições depois de a metadata formatVersion ter sido gravada.
+  return ['mon-smith','tue-reversepush','wed-chestsupported-row','thu-hipthrust','thu-sidebend','fri-pushdown'].every(id=>ids.has(id));
+}
+function savePlanBackupOnce(s,label,plan){
+  if(!plan?.days)return;
+  if(s.planBackups.some(b=>b?.label===label))return;
+  s.planBackups.unshift({id:uid('planbackup'),at:now(),label,plan:deepClone(plan)});
+  s.planBackups=s.planBackups.slice(0,10);
+}
 function normalizeState(s){
   const base=initialState();
+  if(!s||typeof s!=='object'||Array.isArray(s))return base;
 
   s.schema=SCHEMA;
   s.version=VERSION;
-
   s.sessions=Array.isArray(s.sessions)?s.sessions:[];
   s.weightHistory=Array.isArray(s.weightHistory)?s.weightHistory:[];
   s.plannedAbsences=Array.isArray(s.plannedAbsences)?s.plannedAbsences:[];
   s.planHistory=Array.isArray(s.planHistory)?s.planHistory:[];
   s.planBackups=Array.isArray(s.planBackups)?s.planBackups:[];
-
   s.plan=s.plan?.days?s.plan:deepClone(base.plan);
 
-  // A build final deve usar sempre a revisão final do plano.
-  // O plano anterior é preservado nos backups internos e todo o histórico
-  // de sessões/peso/notas continua intacto.
-  if(s.plan?.revision!==BASE_PLAN_REVISION){
-    const oldPlan=s.plan?.days?deepClone(s.plan):null;
+  const hasPlanMetadata=Number(s.plan?.formatVersion||0)>=PLAN_FORMAT_VERSION;
+  const finalFamily=planLooksLikeFinalFamily(s.plan);
 
-    if(oldPlan){
-      const label='Migração automática — plano anterior ao patch final 2026-10-02';
-      const alreadySaved=s.planBackups.some(b=>b?.label===label);
-      if(!alreadySaved){
-        s.planBackups.unshift({
-          id:uid('planbackup'),
-          at:now(),
-          label,
-          plan:oldPlan
-        });
-        s.planBackups=s.planBackups.slice(0,10);
-      }
-    }
-
-    // Uma sessão antiga ainda marcada como activa pertence ao plano anterior.
-    // É encerrada como incompleta, sem apagar qualquer série ou observação,
-    // para não voltar a mostrar exercícios obsoletos quando se toca em "Continuar".
+  if(hasPlanMetadata){
+    // Revisões de patches e alterações manuais são válidas. Nunca se restaura o
+    // plano base só porque revision mudou.
+    s.plan.formatVersion=PLAN_FORMAT_VERSION;
+    s.plan.baseRevision=String(s.plan.baseRevision||BASE_PLAN_REVISION);
+  }else if(s.plan?.revision===BASE_PLAN_REVISION||finalFamily){
+    // Migração única da v8.0/v8.1: o plano já pertence à família final.
+    // Apenas adicionamos metadata; nenhuma progressão/patch do utilizador é apagada.
+    s.plan.formatVersion=PLAN_FORMAT_VERSION;
+    s.plan.baseRevision=BASE_PLAN_REVISION;
+  }else{
+    // Só estados realmente anteriores ao plano final são migrados.
+    savePlanBackupOnce(s,'Migração automática — plano anterior ao plano final 2026-10-02',s.plan);
     s.sessions.forEach(session=>{
       if(session?.status==='active'){
         session.status='incomplete';
         session.endedAt=session.endedAt||now();
       }
     });
-
     s.activeSessionId=null;
     s.restTimer=null;
     s.plan=deepClone(DEFAULT_PLAN);
@@ -1243,10 +1252,9 @@ function normalizeState(s){
   s.settings={...base.settings,...(s.settings||{})};
   s.ui={...base.ui,...(s.ui||{})};
 
-  if(!DAYS.includes(s.settings.selectedDay)){
-    s.settings.selectedDay=weekdayToPlan(new Date());
-  }
-
+  if(!DAYS.includes(s.settings.selectedDay))s.settings.selectedDay=weekdayToPlan(new Date());
+  if(s.activeSessionId&&!s.sessions.some(x=>x?.id===s.activeSessionId&&x.status==='active'))s.activeSessionId=null;
+  if(s.restTimer&&!s.sessions.some(x=>x?.id===s.restTimer.sessionId&&x.status==='active'))s.restTimer=null;
   return s;
 }
 function migrateV6(){
@@ -1387,7 +1395,7 @@ function animateMainIfNeeded(){
   const root=document.getElementById('main-content');if(!root||prefersReducedMotion())return;
   const sig=`${state.settings.view||'workout'}:${activeSession()?'session':'home'}`;
   if(sig!==lastMotionSignature){
-    root.animate([{opacity:.15,transform:'translate3d(0,14px,0) scale(.992)'},{opacity:1,transform:'translate3d(0,0,0) scale(1)'}],{duration:360,easing:'cubic-bezier(.16,1,.3,1)'});
+    root.animate?.([{opacity:.15,transform:'translate3d(0,14px,0) scale(.992)'},{opacity:1,transform:'translate3d(0,0,0) scale(1)'}],{duration:360,easing:'cubic-bezier(.16,1,.3,1)'});
     lastMotionSignature=sig;
   }
 }
@@ -1397,13 +1405,13 @@ function runMotionCue(){
   requestAnimationFrame(()=>{
     if(cue.type==='setComplete'){
       const row=document.querySelector(`[data-setrow="${CSS.escape(cue.setId)}"]`),check=row?.querySelector('.set-check');
-      row?.animate([{transform:'scale(.975)',boxShadow:'0 0 0 rgba(255,112,35,0)'},{transform:'scale(1.012)',boxShadow:'0 0 34px rgba(255,112,35,.22)'},{transform:'scale(1)',boxShadow:'0 0 0 rgba(255,112,35,0)'}],{duration:520,easing:'cubic-bezier(.16,1,.3,1)'});
-      check?.animate([{transform:'scale(.45) rotate(-18deg)'},{transform:'scale(1.18) rotate(4deg)'},{transform:'scale(1) rotate(0)'}],{duration:460,easing:'cubic-bezier(.16,1,.3,1)'});
+      row?.animate?.([{transform:'scale(.975)',boxShadow:'0 0 0 rgba(255,112,35,0)'},{transform:'scale(1.012)',boxShadow:'0 0 34px rgba(255,112,35,.22)'},{transform:'scale(1)',boxShadow:'0 0 0 rgba(255,112,35,0)'}],{duration:520,easing:'cubic-bezier(.16,1,.3,1)'});
+      check?.animate?.([{transform:'scale(.45) rotate(-18deg)'},{transform:'scale(1.18) rotate(4deg)'},{transform:'scale(1) rotate(0)'}],{duration:460,easing:'cubic-bezier(.16,1,.3,1)'});
     }else if(cue.type==='exerciseOpen'){
       const card=document.querySelector(`.exercise-card[data-ex="${CSS.escape(cue.exerciseId)}"]`);
-      card?.animate([{opacity:.45,transform:'translateY(10px) scale(.992)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:380,easing:'cubic-bezier(.16,1,.3,1)'});
+      card?.animate?.([{opacity:.45,transform:'translateY(10px) scale(.992)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:380,easing:'cubic-bezier(.16,1,.3,1)'});
     }else if(cue.type==='finish'){
-      document.getElementById('main-content')?.animate([{filter:'brightness(1)'},{filter:'brightness(1.16)'},{filter:'brightness(1)'}],{duration:500,easing:'ease-out'});
+      document.getElementById('main-content')?.animate?.([{filter:'brightness(1)'},{filter:'brightness(1.16)'},{filter:'brightness(1)'}],{duration:500,easing:'ease-out'});
     }
   });
 }
@@ -1920,6 +1928,7 @@ function nextPendingExercise(s,afterId=null){
 function advanceAfterStatus(s,e){const n=nextPendingExercise(s,e.exerciseId);state.ui.expandedExerciseId=n?.exerciseId||null;}
 
 function startRest(s,e,set){
+  restFinishedSignalFor=null;
   state.restTimer={sessionId:s.id,exerciseId:e.exerciseId,setId:set.id,startedAt:now(),targetSec:Number(set.targetRest||e.rest||0),pausedAt:null,totalPausedMs:0};
   set.restStartedAt=state.restTimer.startedAt;persist(true);ensureRestTicker();
 }
@@ -1927,7 +1936,7 @@ function stopRest(source='manual',silent=false){
   const r=state.restTimer;if(!r)return;
   const s=getSession(r.sessionId);const e=s?.exercises.find(x=>x.exerciseId===r.exerciseId);const set=e?.sets.find(x=>x.id===r.setId);
   const end=now(); const pausedMs=(r.totalPausedMs||0)+(r.pausedAt?Math.max(0,end-r.pausedAt):0); if(set){set.restEndedAt=end;set.restEndSource=source;set.restPausedMs=pausedMs;}
-  state.restTimer=null;persist(true);renderRestDock();if(!silent)haptic(18);
+  state.restTimer=null;restFinishedSignalFor=null;persist(true);renderRestDock();if(!silent)haptic(18);
 }
 function pauseRest(){const r=state.restTimer;if(!r)return;if(r.pausedAt){r.totalPausedMs+=now()-r.pausedAt;r.pausedAt=null;}else r.pausedAt=now();persist(true);renderRestDock();}
 function restElapsedMs(r){const end=r.pausedAt||now();return Math.max(0,end-r.startedAt-(r.totalPausedMs||0));}
@@ -2016,10 +2025,11 @@ function openHistorySession(s){
   });
 }
 function openHistoryEdit(s){
-  modal(`<button class="modal-close" data-close>×</button><h3>Editar registo antigo</h3><p class="small muted">As alterações ficam marcadas como edição posterior e as métricas são recalculadas.</p><div>${s.exercises.map((e,ei)=>`<div class="card slim"><strong>${esc(e.name)}</strong><textarea class="exercise-note hist-general" data-ei="${ei}" placeholder="Observação geral…">${esc(e.generalNote||'')}</textarea><div class="set-list" style="margin-top:8px">${e.sets.map((set,si)=>`<div class="set-row ${set.type==='warmup'?'warmup':''}"><div class="set-label">${set.type==='warmup'?'Aquec.':'Série'} ${set.index}</div>${e.loadMode==='bodyweight'?'<div class="set-input" style="display:grid;place-items:center;color:#8d98ad">PC</div>':`<input class="set-input hist-field" inputmode="decimal" data-ei="${ei}" data-si="${si}" data-f="weight" value="${esc(set.weight||'')}" placeholder="kg">`}${e.unilateral?`<div class="unilateral-reps"><input class="set-input hist-field" inputmode="numeric" data-ei="${ei}" data-si="${si}" data-f="repsLeft" value="${esc(set.repsLeft||'')}" placeholder="E"><input class="set-input hist-field" inputmode="numeric" data-ei="${ei}" data-si="${si}" data-f="repsRight" value="${esc(set.repsRight||'')}" placeholder="D"></div>`:`<input class="set-input hist-field" inputmode="numeric" data-ei="${ei}" data-si="${si}" data-f="reps" value="${esc(set.reps||'')}" placeholder="reps">`}<div></div><div style="text-align:center">${set.done?'✓':'—'}</div></div>`).join('')}</div></div>`).join('')}</div><div class="modal-actions"><button class="secondary" data-close>Cancelar</button><button class="primary" id="hist-edit-save">Guardar correcções</button></div>`,root=>{
-    root.querySelectorAll('.hist-field').forEach(inp=>inp.addEventListener('input',()=>{const e=s.exercises[Number(inp.dataset.ei)],set=e.sets[Number(inp.dataset.si)];set[inp.dataset.f]=inp.value;}));
-    root.querySelectorAll('.hist-general').forEach(t=>t.addEventListener('input',()=>{s.exercises[Number(t.dataset.ei)].generalNote=t.value;}));
-    root.querySelector('#hist-edit-save').onclick=()=>{s.editedAfterFinish=true;s.editedAt=now();persist(true);closeModal();toast('Registo corrigido.');render();};
+  const draft=deepClone(s.exercises||[]);
+  modal(`<button class="modal-close" data-close>×</button><h3>Editar registo antigo</h3><p class="small muted">As alterações só são aplicadas quando tocares em Guardar correcções.</p><div>${draft.map((e,ei)=>`<div class="card slim"><strong>${esc(e.name)}</strong><textarea class="exercise-note hist-general" data-ei="${ei}" placeholder="Observação geral…">${esc(e.generalNote||'')}</textarea><div class="set-list" style="margin-top:8px">${e.sets.map((set,si)=>`<div class="set-row ${set.type==='warmup'?'warmup':''}"><div class="set-label">${set.type==='warmup'?'Aquec.':'Série'} ${set.index}</div>${e.loadMode==='bodyweight'?'<div class="set-input" style="display:grid;place-items:center;color:#8d98ad">PC</div>':`<input class="set-input hist-field" inputmode="decimal" data-ei="${ei}" data-si="${si}" data-f="weight" value="${esc(set.weight||'')}" placeholder="kg">`}${e.unilateral?`<div class="unilateral-reps"><input class="set-input hist-field" inputmode="numeric" data-ei="${ei}" data-si="${si}" data-f="repsLeft" value="${esc(set.repsLeft||'')}" placeholder="E"><input class="set-input hist-field" inputmode="numeric" data-ei="${ei}" data-si="${si}" data-f="repsRight" value="${esc(set.repsRight||'')}" placeholder="D"></div>`:`<input class="set-input hist-field" inputmode="numeric" data-ei="${ei}" data-si="${si}" data-f="reps" value="${esc(set.reps||'')}" placeholder="reps">`}<div></div><div style="text-align:center">${set.done?'✓':'—'}</div></div>`).join('')}</div></div>`).join('')}</div><div class="modal-actions"><button class="secondary" data-close>Cancelar</button><button class="primary" id="hist-edit-save">Guardar correcções</button></div>`,root=>{
+    root.querySelectorAll('.hist-field').forEach(inp=>inp.addEventListener('input',()=>{const e=draft[Number(inp.dataset.ei)],set=e?.sets?.[Number(inp.dataset.si)];if(set)set[inp.dataset.f]=inp.value;}));
+    root.querySelectorAll('.hist-general').forEach(t=>t.addEventListener('input',()=>{const e=draft[Number(t.dataset.ei)];if(e)e.generalNote=t.value;}));
+    root.querySelector('#hist-edit-save').onclick=()=>{s.exercises=draft;s.editedAfterFinish=true;s.editedAt=now();persist(true);closeModal();toast('Registo corrigido.');render();};
   });
 }
 
@@ -2089,15 +2099,109 @@ function renderMore(){
 }
 
 function openPatchModal(){
-  modal(`<button class="modal-close" data-close>×</button><h3>Aplicar patch do ChatGPT</h3><p class="small muted">Cola manualmente o patch. Nada é aplicado antes da pré-visualização.</p><textarea id="patch-text" class="textarea code" style="min-height:190px" placeholder='{"type":"hipertrofia-pro-patch", ...}'></textarea><div class="modal-actions"><button class="secondary" data-close>Cancelar</button><button class="primary" id="patch-preview-btn">Pré-visualizar</button></div>`,root=>{root.querySelector('#patch-preview-btn').onclick=()=>{const obj=parsePatch(root.querySelector('#patch-text').value);if(!obj){toast('Patch inválido.');return;}openPatchPreview(obj);};});
+  modal(`<button class="modal-close" data-close>×</button><h3>Aplicar patch do ChatGPT</h3><p class="small muted">Podes colar apenas o JSON ou uma mensagem que contenha o bloco JSON. Nada é alterado antes da validação e pré-visualização.</p><textarea id="patch-text" class="textarea code" style="min-height:190px" placeholder='{"type":"hipertrofia-pro-patch", ...}'></textarea><div class="modal-actions"><button class="secondary" data-close>Cancelar</button><button class="primary" id="patch-preview-btn">Validar e pré-visualizar</button></div>`,root=>{root.querySelector('#patch-preview-btn').onclick=()=>{const result=parsePatch(root.querySelector('#patch-text').value);if(!result.patch){toast(result.error||'Patch inválido.');return;}const validation=validatePatch(result.patch);if(!validation.ok){openPatchErrors(validation.errors);return;}openPatchPreview(result.patch,validation);};});
+}
+function extractJSONObject(text){
+  const src=String(text||'').trim();
+  if(!src)return null;
+  const direct=safeJSON(src);if(direct&&typeof direct==='object'&&!Array.isArray(direct))return direct;
+  const unfenced=src.replace(/```(?:json)?/gi,'').replace(/```/g,'').trim();
+  const clean=safeJSON(unfenced);if(clean&&typeof clean==='object'&&!Array.isArray(clean))return clean;
+  for(let start=0;start<unfenced.length;start++){
+    if(unfenced[start]!=='{')continue;
+    let depth=0,inString=false,escaped=false;
+    for(let i=start;i<unfenced.length;i++){
+      const ch=unfenced[i];
+      if(inString){if(escaped){escaped=false;continue;}if(ch==='\\'){escaped=true;continue;}if(ch==='"')inString=false;continue;}
+      if(ch==='"'){inString=true;continue;}
+      if(ch==='{')depth++;
+      else if(ch==='}'){depth--;if(depth===0){const obj=safeJSON(unfenced.slice(start,i+1));if(obj&&typeof obj==='object'&&!Array.isArray(obj))return obj;break;}}
+    }
+  }
+  return null;
 }
 function parsePatch(text){
-  let obj=safeJSON(text.trim());if(!obj){const start=text.indexOf('{"type"');if(start>=0){for(let end=text.length;end>start;end--){obj=safeJSON(text.slice(start,end));if(obj)break;}}}
-  if(!obj||obj.type!=='hipertrofia-pro-patch'||!Array.isArray(obj.changes))return null;return obj;
+  const obj=extractJSONObject(text);
+  if(!obj)return {patch:null,error:'Não encontrei um JSON válido no texto colado.'};
+  if(obj.type!=='hipertrofia-pro-patch')return {patch:null,error:'Este JSON não é um patch Hipertrofia Pro.'};
+  if(obj.schema!==undefined&&Number(obj.schema)!==PATCH_SCHEMA)return {patch:null,error:`Schema do patch incompatível. Esperado: ${PATCH_SCHEMA}.`};
+  if(!Array.isArray(obj.changes))return {patch:null,error:'O patch não contém a lista changes.'};
+  return {patch:obj,error:''};
 }
-function openPatchPreview(patch){
-  const items=patch.changes.map(c=>describeChange(c));
-  modal(`<button class="modal-close" data-close>×</button><h3>Pré-visualização</h3><p class="small muted">${esc(patch.label||'Patch sem descrição')}</p><div class="patch-preview">${items.map(i=>`<div class="patch-change">${esc(i)}</div>`).join('')}</div><div class="modal-actions"><button class="secondary" data-close>Cancelar</button><button class="primary" id="apply-patch">Aplicar alterações</button></div>`,root=>{root.querySelector('#apply-patch').onclick=()=>{applyPatch(patch);closeModal();toast('Patch aplicado. Podes desfazer pelo Histórico do plano.');render();};});
+const PATCH_OPS=new Set(['update','pause','resume','add','remove','reorder','musclemap','day']);
+const PATCH_EX_FIELDS=new Set(['name','active','sets','targetWeight','targetReps','rest','loadMode','warmup','execution','progression','notes','unilateral','muscleMap']);
+const PATCH_DAY_FIELDS=new Set(['title','focus']);
+const LOAD_MODES=new Set(['total','perSide','twoDumbbells','singleDumbbell','bodyweight','custom']);
+function plainObject(v){return !!v&&typeof v==='object'&&!Array.isArray(v);}
+function sanitizeExerciseSet(set){
+  const out={};if(!plainObject(set))return out;
+  for(const [k,v] of Object.entries(set)){
+    if(!PATCH_EX_FIELDS.has(k))continue;
+    if(k==='sets'){const n=Math.round(Number(v));if(Number.isFinite(n)&&n>=1&&n<=20)out[k]=n;continue;}
+    if(k==='rest'){const n=Math.round(Number(v));if(Number.isFinite(n)&&n>=0&&n<=1800)out[k]=n;continue;}
+    if(k==='active'||k==='unilateral'){out[k]=!!v;continue;}
+    if(k==='loadMode'){if(LOAD_MODES.has(String(v)))out[k]=String(v);continue;}
+    if(k==='warmup'){
+      if(plainObject(v)){const w={sets:clamp(Math.round(Number(v.sets)||0),0,10),weight:String(v.weight??''),reps:String(v.reps??'')};out[k]=w;}continue;
+    }
+    if(k==='muscleMap'){const mm=normalizeMuscleMap(v);if(mm)out[k]=mm;continue;}
+    out[k]=String(v??'').slice(0,k==='execution'||k==='progression'||k==='notes'?4000:300);
+  }
+  return out;
+}
+function normalizeNewExercise(raw){
+  if(!plainObject(raw))return null;
+  const id=String(raw.id||'').trim();const name=String(raw.name||'').trim();
+  if(!/^[a-z0-9][a-z0-9._-]{2,79}$/i.test(id)||!name)return null;
+  const e=ex(id,name.slice(0,160),clamp(Math.round(Number(raw.sets)||3),1,20),String(raw.targetWeight??''),String(raw.targetReps??'8–12'),clamp(Math.round(Number(raw.rest)||90),0,1800),LOAD_MODES.has(String(raw.loadMode))?String(raw.loadMode):'total',plainObject(raw.warmup)?{sets:clamp(Math.round(Number(raw.warmup.sets)||0),0,10),weight:String(raw.warmup.weight??''),reps:String(raw.warmup.reps??'')}:{sets:0,weight:'',reps:''},String(raw.execution??'').slice(0,4000),String(raw.progression??'').slice(0,4000),String(raw.notes??'').slice(0,4000));
+  e.active=raw.active!==false;e.unilateral=!!raw.unilateral;
+  const mm=normalizeMuscleMap(raw.muscleMap);if(mm)e.muscleMap=mm;
+  return e;
+}
+function validatePatch(patch){
+  const errors=[];const normalized=[];
+  if(!Array.isArray(patch.changes)||patch.changes.length<1)errors.push('O patch não contém alterações.');
+  if((patch.changes||[]).length>100)errors.push('O patch contém alterações a mais.');
+  (patch.changes||[]).forEach((c,i)=>{
+    const n=i+1;if(!plainObject(c)){errors.push(`#${n}: alteração inválida.`);return;}
+    const op=String(c.op||'');const day=String(c.day||'');
+    if(!PATCH_OPS.has(op)){errors.push(`#${n}: operação desconhecida (${op||'vazia'}).`);return;}
+    if(!DAYS.includes(day)){errors.push(`#${n}: dia inválido (${day||'vazio'}).`);return;}
+    const dayObj=planDay(day);const existing=c.id?dayObj?.exercises?.find(e=>e.id===c.id):null;
+    if(['update','pause','resume','remove','musclemap'].includes(op)&&!existing){errors.push(`#${n}: exercício ${c.id||'(sem id)'} não existe em ${day}.`);return;}
+    if(op==='update'){
+      const set=sanitizeExerciseSet(c.set);if(!Object.keys(set).length){errors.push(`#${n}: update sem campos válidos.`);return;}normalized.push({day,op,id:c.id,set});return;
+    }
+    if(op==='pause'||op==='resume'||op==='remove'){normalized.push({day,op,id:c.id});return;}
+    if(op==='add'){
+      const exercise=normalizeNewExercise(c.exercise);if(!exercise){errors.push(`#${n}: exercício novo inválido.`);return;}
+      if(dayObj.exercises.some(e=>e.id===exercise.id)){errors.push(`#${n}: o id ${exercise.id} já existe.`);return;}
+      normalized.push({day,op,exercise});return;
+    }
+    if(op==='reorder'){
+      if(!Array.isArray(c.ids)||!c.ids.length){errors.push(`#${n}: reorder sem ids.`);return;}
+      const ids=c.ids.map(String);if(new Set(ids).size!==ids.length){errors.push(`#${n}: reorder contém ids repetidos.`);return;}
+      const unknown=ids.filter(id=>!dayObj.exercises.some(e=>e.id===id));if(unknown.length){errors.push(`#${n}: ids inexistentes: ${unknown.join(', ')}.`);return;}
+      normalized.push({day,op,ids});return;
+    }
+    if(op==='musclemap'){
+      const map=normalizeMuscleMap(c.map);if(!map){errors.push(`#${n}: mapa muscular inválido.`);return;}normalized.push({day,op,id:c.id,map});return;
+    }
+    if(op==='day'){
+      if(!plainObject(c.set)){errors.push(`#${n}: dados do dia inválidos.`);return;}
+      const set={};for(const [k,v] of Object.entries(c.set))if(PATCH_DAY_FIELDS.has(k))set[k]=String(v??'').slice(0,500);
+      if(!Object.keys(set).length){errors.push(`#${n}: nenhum campo válido para o dia.`);return;}normalized.push({day,op,set});
+    }
+  });
+  return {ok:errors.length===0,errors,normalized};
+}
+function openPatchErrors(errors){
+  modal(`<button class="modal-close" data-close>×</button><h3>Patch não aplicado</h3><p class="small muted">Foram encontrados problemas. Nenhuma alteração foi feita.</p><div class="patch-preview">${errors.map(e=>`<div class="patch-change">${esc(e)}</div>`).join('')}</div><div class="modal-actions"><button class="secondary" data-close>Voltar</button></div>`);
+}
+function openPatchPreview(patch,validation=validatePatch(patch)){
+  if(!validation.ok){openPatchErrors(validation.errors);return;}
+  const items=validation.normalized.map(c=>describeChange(c));
+  modal(`<button class="modal-close" data-close>×</button><h3>Pré-visualização validada</h3><p class="small muted">${esc(patch.label||'Patch sem descrição')} · ${items.length} alteração(ões)</p><div class="patch-preview">${items.map(i=>`<div class="patch-change">${esc(i)}</div>`).join('')}</div><div class="modal-actions"><button class="secondary" data-close>Cancelar</button><button class="primary" id="apply-patch">Aplicar alterações</button></div>`,root=>{root.querySelector('#apply-patch').onclick=()=>{const applied=applyPatch(patch,validation);if(!applied.ok){closeModal();openPatchErrors(applied.errors);return;}closeModal();toast('Patch aplicado e guardado.');render();};});
 }
 function describeChange(c){
   const d=c.day||'';const ex=c.id?findPlanExercise(d,c.id):null;
@@ -2111,26 +2215,36 @@ function describeChange(c){
   if(c.op==='day')return `${d}: actualizar dados do dia`;
   return `${d} · operação ${c.op}`;
 }
-function applyPatch(patch){
-  const before=deepClone(state.plan);state.planBackups.unshift({id:uid('planbackup'),at:now(),label:patch.label||'Antes do patch',plan:before});state.planBackups=state.planBackups.slice(0,10);
-  for(const c of patch.changes){
-    const day=planDay(c.day);if(!day)continue;
-    if(c.op==='update'){const e=day.exercises.find(x=>x.id===c.id);if(e&&c.set)Object.assign(e,c.set);}
-    else if(c.op==='pause'){const e=day.exercises.find(x=>x.id===c.id);if(e)e.active=false;}
-    else if(c.op==='resume'){const e=day.exercises.find(x=>x.id===c.id);if(e)e.active=true;}
-    else if(c.op==='add'&&c.exercise){if(!day.exercises.some(x=>x.id===c.exercise.id))day.exercises.push(c.exercise);}
-    else if(c.op==='remove'){day.exercises=day.exercises.filter(x=>x.id!==c.id);}
-    else if(c.op==='reorder'&&Array.isArray(c.ids)){const map=new Map(day.exercises.map(e=>[e.id,e]));day.exercises=[...c.ids.map(id=>map.get(id)).filter(Boolean),...day.exercises.filter(e=>!c.ids.includes(e.id))];}
-    else if(c.op==='musclemap'){const e=day.exercises.find(x=>x.id===c.id);if(e&&c.map)e.muscleMap=normalizeMuscleMap(c.map);}
-    else if(c.op==='day'&&c.set)Object.assign(day,c.set);
-  }
-  state.plan.revision=patch.revision||`patch-${isoDate()}-${now()}`;
-  state.planHistory.unshift({id:uid('ph'),at:now(),source:'patch',label:patch.label||'Patch ChatGPT',changes:deepClone(patch.changes)});
-  state.planHistory.forEach(x=>{if(x.source==='manual')x.acknowledgedByPatch=true;});persist(true);
+function applyPatch(patch,validation=validatePatch(patch)){
+  if(!validation.ok)return {ok:false,errors:validation.errors};
+  const before=deepClone(state.plan),draft=deepClone(state.plan);
+  try{
+    const getDay=day=>draft.days?.[day];
+    for(const c of validation.normalized){
+      const day=getDay(c.day);if(!day)throw new Error(`Dia inexistente: ${c.day}`);
+      if(c.op==='update'){const e=day.exercises.find(x=>x.id===c.id);if(!e)throw new Error(`Exercício inexistente: ${c.id}`);Object.assign(e,c.set);}
+      else if(c.op==='pause'){day.exercises.find(x=>x.id===c.id).active=false;}
+      else if(c.op==='resume'){day.exercises.find(x=>x.id===c.id).active=true;}
+      else if(c.op==='add'){day.exercises.push(deepClone(c.exercise));}
+      else if(c.op==='remove'){day.exercises=day.exercises.filter(x=>x.id!==c.id);}
+      else if(c.op==='reorder'){const map=new Map(day.exercises.map(e=>[e.id,e]));day.exercises=[...c.ids.map(id=>map.get(id)),...day.exercises.filter(e=>!c.ids.includes(e.id))];}
+      else if(c.op==='musclemap'){day.exercises.find(x=>x.id===c.id).muscleMap=deepClone(c.map);}
+      else if(c.op==='day'){Object.assign(day,c.set);}
+    }
+    draft.formatVersion=PLAN_FORMAT_VERSION;
+    draft.baseRevision=draft.baseRevision||BASE_PLAN_REVISION;
+    draft.revision=String(patch.revision||`patch-${isoDate()}-${now()}`).slice(0,160);
+    state.plan=draft;
+    state.planBackups.unshift({id:uid('planbackup'),at:now(),label:patch.label||'Antes do patch',plan:before});
+    state.planBackups=state.planBackups.slice(0,10);
+    state.planHistory.unshift({id:uid('ph'),at:now(),source:'patch',label:String(patch.label||'Patch ChatGPT').slice(0,220),changes:deepClone(validation.normalized)});
+    state.planHistory.forEach(x=>{if(x.source==='manual')x.acknowledgedByPatch=true;});
+    persist(true);return {ok:true,errors:[]};
+  }catch(err){console.error('Patch apply:',err);state.plan=before;return {ok:false,errors:[`Falha ao aplicar patch: ${err?.message||err}`]};}
 }
 function findPlanExercise(day,id){return planDay(day)?.exercises.find(e=>e.id===id)||null;}
 function openPlanHistory(){
-  const rows=state.planHistory.slice(0,20);modal(`<button class="modal-close" data-close>×</button><h3>Histórico do plano</h3>${rows.length?rows.map(r=>`<div class="card slim"><strong>${esc(r.label)}</strong><div class="tiny muted">${new Date(r.at).toLocaleString('pt-PT')} · ${r.source==='patch'?'Patch ChatGPT':'Alteração manual'}</div></div>`).join(''):'<p class="muted small">Ainda sem alterações registadas.</p>'}${state.planBackups.length?`<hr class="sep"><button id="undo-last-plan" class="danger" style="width:100%">Restaurar versão anterior ao último patch</button>`:''}`,root=>{const b=root.querySelector('#undo-last-plan');if(b)b.onclick=()=>openConfirm('Restaurar plano','O plano actual será substituído pela cópia anterior ao último patch. O histórico de treinos não é alterado.',()=>{const bak=state.planBackups.shift();if(bak){state.plan=deepClone(bak.plan);state.planHistory.unshift({id:uid('ph'),at:now(),source:'manual',label:'Restauro de plano'});persist(true);closeModal();render();}});});
+  const rows=state.planHistory.slice(0,20);modal(`<button class="modal-close" data-close>×</button><h3>Histórico do plano</h3>${rows.length?rows.map(r=>`<div class="card slim"><strong>${esc(r.label)}</strong><div class="tiny muted">${new Date(r.at).toLocaleString('pt-PT')} · ${r.source==='patch'?'Patch ChatGPT':'Alteração manual'}</div></div>`).join(''):'<p class="muted small">Ainda sem alterações registadas.</p>'}${state.planBackups.length?`<hr class="sep"><button id="undo-last-plan" class="danger" style="width:100%">Restaurar versão anterior ao último patch</button>`:''}`,root=>{const b=root.querySelector('#undo-last-plan');if(b)b.onclick=()=>openConfirm('Restaurar plano','O plano actual será substituído pela cópia anterior ao último patch. O histórico de treinos não é alterado.',()=>{const bak=state.planBackups.shift();if(bak){state.plan=deepClone(bak.plan);state.plan.formatVersion=PLAN_FORMAT_VERSION;state.plan.baseRevision=state.plan.baseRevision||BASE_PLAN_REVISION;state.planHistory.unshift({id:uid('ph'),at:now(),source:'manual',label:'Restauro de plano'});persist(true);closeModal();render();}});});
 }
 
 function openEditor(){
@@ -2144,14 +2258,19 @@ function openEditor(){
 }
 function editorItemHTML(e){return `<div class="editor-item" draggable="true" data-editor-id="${e.id}"><div class="drag-handle">≡</div><div class="grow"><strong>${esc(e.name)}</strong><small>${e.active===false?'Pausado · ':''}${esc(fmtTarget(e))}</small></div><button class="ghost" data-edit-ex="${e.id}">Editar</button></div>`;}
 function bindDragEditor(list,day){
-  const saveOrder=()=>{const ids=[...list.querySelectorAll('.editor-item')].map(x=>x.dataset.editorId);const dayObj=planDay(day),map=new Map(dayObj.exercises.map(e=>[e.id,e]));dayObj.exercises=ids.map(id=>map.get(id)).filter(Boolean);recordManualPlan(`Ordem alterada em ${day}`);persist(true);};
+  let committed=false;
+  const saveOrder=()=>{
+    if(committed)return;committed=true;
+    const ids=[...list.querySelectorAll('.editor-item')].map(x=>x.dataset.editorId);const dayObj=planDay(day);const oldIds=dayObj.exercises.map(e=>e.id);
+    if(ids.length!==oldIds.length||ids.some((id,i)=>id!==oldIds[i])){const map=new Map(dayObj.exercises.map(e=>[e.id,e]));dayObj.exercises=ids.map(id=>map.get(id)).filter(Boolean);recordManualPlan(`Ordem alterada em ${day}`);persist(true);}
+  };
+  const begin=()=>{committed=false;};
   list.querySelectorAll('.editor-item').forEach(item=>{
-    item.addEventListener('dragstart',()=>{dragInfo=item.dataset.editorId;item.classList.add('dragging');});
+    item.addEventListener('dragstart',()=>{begin();dragInfo=item.dataset.editorId;item.classList.add('dragging');});
     item.addEventListener('dragend',()=>{item.classList.remove('dragging');dragInfo=null;saveOrder();});
     item.addEventListener('dragover',ev=>{ev.preventDefault();const moving=list.querySelector(`[data-editor-id="${dragInfo}"]`);if(!moving||moving===item)return;const r=item.getBoundingClientRect();list.insertBefore(moving,ev.clientY<r.top+r.height/2?item:item.nextSibling);});
-    const handle=item.querySelector('.drag-handle');
-    let touchMove=null;
-    handle?.addEventListener('pointerdown',ev=>{if(ev.pointerType==='mouse')return;dragInfo=item.dataset.editorId;item.classList.add('dragging');handle.setPointerCapture?.(ev.pointerId);touchMove=moveEv=>{const target=document.elementFromPoint(moveEv.clientX,moveEv.clientY)?.closest?.('.editor-item');if(!target||target===item||target.parentElement!==list)return;const r=target.getBoundingClientRect();list.insertBefore(item,moveEv.clientY<r.top+r.height/2?target:target.nextSibling);};handle.addEventListener('pointermove',touchMove);});
+    const handle=item.querySelector('.drag-handle');let touchMove=null;
+    handle?.addEventListener('pointerdown',ev=>{if(ev.pointerType==='mouse')return;begin();dragInfo=item.dataset.editorId;item.classList.add('dragging');handle.setPointerCapture?.(ev.pointerId);touchMove=moveEv=>{const target=document.elementFromPoint(moveEv.clientX,moveEv.clientY)?.closest?.('.editor-item');if(!target||target===item||target.parentElement!==list)return;const r=target.getBoundingClientRect();list.insertBefore(item,moveEv.clientY<r.top+r.height/2?target:target.nextSibling);};handle.addEventListener('pointermove',touchMove);});
     handle?.addEventListener('pointerup',ev=>{if(ev.pointerType==='mouse')return;if(touchMove)handle.removeEventListener('pointermove',touchMove);item.classList.remove('dragging');dragInfo=null;saveOrder();});
     handle?.addEventListener('pointercancel',()=>{if(touchMove)handle.removeEventListener('pointermove',touchMove);item.classList.remove('dragging');dragInfo=null;});
   });
@@ -2164,7 +2283,7 @@ function openEditExercise(day,id){
     const del=root.querySelector('#ee-delete');if(del)del.onclick=()=>openConfirm('Remover exercício',`Remover ${e.name} do plano? O histórico anterior não será apagado.`,()=>{planDay(day).exercises=planDay(day).exercises.filter(x=>x.id!==id);recordManualPlan(`Removido: ${e.name}`);persist(true);closeModal();openEditor();});
   });
 }
-function recordManualPlan(label){state.planHistory.unshift({id:uid('ph'),at:now(),source:'manual',label,acknowledgedByPatch:false});}
+function recordManualPlan(label){state.plan.formatVersion=PLAN_FORMAT_VERSION;state.plan.baseRevision=state.plan.baseRevision||BASE_PLAN_REVISION;state.plan.revision=`manual-${isoDate()}-${now()}`;state.planHistory.unshift({id:uid('ph'),at:now(),source:'manual',label,acknowledgedByPatch:false});}
 
 function buildChatGPTReport(s){
   const gapInfo=previousGapText(s);const stats=sessionStats(s);
@@ -2180,7 +2299,7 @@ function buildChatGPTReport(s){
     lines.push('');
   });
   const flags=performanceFlags().filter(f=>s.exercises.some(e=>e.name===f.name));if(flags.length){lines.push('Sinais automáticos (informativos, NÃO são decisões de progressão):');flags.forEach(f=>lines.push(`- ${f.name}: ${f.text}`));lines.push('');}
-  lines.push('INSTRUÇÃO PARA CHATGPT: analisa a sessão, técnica, reps, carga, descansos, observações e tendência das últimas sessões. Decide por exercício: ↑ aumentar, → manter, ↓ reduzir, ⚙️ corrigir técnica ou substituir. A aplicação não deve decidir progressão autonomamente. Se houver alterações, devolve um patch hipertrofia-pro-patch compatível com a v7.');
+  lines.push('INSTRUÇÃO PARA CHATGPT: analisa a sessão, técnica, reps, carga, descansos, observações e tendência das últimas sessões. Decide por exercício: ↑ aumentar, → manter, ↓ reduzir, ⚙️ corrigir técnica ou substituir. A aplicação não deve decidir progressão autonomamente. Se houver alterações, devolve um patch hipertrofia-pro-patch compatível com a v8.2.');
   return lines.join('\n');
 }
 function previousGapText(s){const prev=state.sessions.filter(x=>x.id!==s.id&&(x.status==='completed'||x.status==='incomplete')&&x.startedAt<s.startedAt).sort((a,b)=>b.startedAt-a.startedAt)[0];if(!prev)return'';const days=Math.floor((dateFromISO(s.date)-dateFromISO(prev.date))/86400000);return days>=5?`Pausa desde a sessão anterior: ${days} dias.`:'';}
@@ -2191,11 +2310,21 @@ function exportBackup(){
   try{if(nativeAvailable()&&window.NativeBridge.exportBackup){window.NativeBridge.exportBackup(text,name);return;}}catch{}
   const blob=new Blob([text],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+function validateBackupState(incoming){
+  if(!incoming||typeof incoming!=='object'||Array.isArray(incoming))return 'Estado do backup inválido.';
+  if(Number(incoming.schema)!==SCHEMA)return `Schema incompatível: ${incoming.schema??'ausente'}.`;
+  if(!incoming.plan?.days||!plainObject(incoming.plan.days))return 'O backup não contém um plano válido.';
+  if(!Array.isArray(incoming.sessions)||incoming.sessions.length>5000)return 'Histórico de sessões inválido ou excessivamente grande.';
+  return '';
+}
 function importBackupText(text){
+  if(String(text||'').length>12*1024*1024){toast('Backup demasiado grande.');return;}
   const obj=safeJSON(text);if(!obj){toast('Ficheiro inválido.');return;}
   let incoming=null;if(obj.type==='hipertrofia-pro-v7-backup'&&obj.state)incoming=obj.state;else if(obj.type==='hipertrofia-pro-backup'){incoming=convertV6Backup(obj);}
   if(!incoming){toast('Backup não reconhecido.');return;}
-  openConfirm('Importar backup','Os dados actuais serão substituídos. Será guardada uma cópia automática antes da importação.',()=>{rotateSnapshot();state=normalizeState(incoming);persist(true);closeModal();render();toast('Backup importado.');});
+  const err=validateBackupState(incoming);if(err){toast(err);return;}
+  const draft=normalizeState(deepClone(incoming));
+  openConfirm('Importar backup','Os dados actuais serão substituídos. A cópia actual fica preservada nos snapshots automáticos.',()=>{rotateSnapshot();state=draft;currentSessionId=null;persist(true);closeModal();render();toast('Backup importado.');});
 }
 function handleImportFile(file){const reader=new FileReader();reader.onload=()=>importBackupText(String(reader.result||''));reader.readAsText(file);}
 window.receiveNativeBackup=text=>importBackupText(String(text||''));
@@ -2251,7 +2380,7 @@ window.handleAndroidBack=()=>{
 };
 function localPreviewGate(){
   if(config.googleCloudConfigured||state.ui.localPreviewAccepted)return;
-  modal(`<h3>Modo local v7</h3><p class="small muted">A conta Google obrigatória e a sincronização cloud continuam pendentes porque exigem credenciais externas do projecto. Até essas credenciais serem configuradas, os dados ficam protegidos localmente com autosave e backups.</p><div class="modal-actions"><button id="accept-local" class="primary">Continuar em modo local</button></div>`,root=>{root.querySelector('#accept-local').onclick=()=>{state.ui.localPreviewAccepted=true;persist(true);closeModal();};});
+  modal(`<h3>Modo local</h3><p class="small muted">A conta Google obrigatória e a sincronização cloud continuam pendentes porque exigem credenciais externas do projecto. Até essas credenciais serem configuradas, os dados ficam protegidos localmente com autosave e backups.</p><div class="modal-actions"><button id="accept-local" class="primary">Continuar em modo local</button></div>`,root=>{root.querySelector('#accept-local').onclick=()=>{state.ui.localPreviewAccepted=true;persist(true);closeModal();};});
 }
 
 setupNav();setupGlobal();render();localPreviewGate();
