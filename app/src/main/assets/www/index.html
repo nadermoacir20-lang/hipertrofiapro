@@ -259,7 +259,7 @@ window.HP_CONFIG = {
 (() => {
 'use strict';
 
-const VERSION = '8.3.0';
+const VERSION = '8.4.0';
 const SCHEMA = 7;
 const KEY = 'hipertrofia_pro_v7_state';
 const SNAP_PREFIX = 'hipertrofia_pro_v7_snapshot_';
@@ -302,7 +302,7 @@ const BASE_PLAN_REVISION = 'patch-2026-10-02-final-video-plan-r2';
 const PLAN_FORMAT_VERSION = 2;
 const PATCH_SCHEMA = 7;
 const DEFAULT_PLAN = {
-  "revision": "patch-2026-10-02-final-video-plan-r2",
+  "revision": "2026-10-21-v84-integrated",
   "formatVersion": 2,
   "baseRevision": "patch-2026-10-02-final-video-plan-r2",
   "days": {
@@ -334,7 +334,7 @@ const DEFAULT_PLAN = {
           "name": "Leg Press plate-loaded habitual",
           "active": true,
           "sets": 3,
-          "targetWeight": "45",
+          "targetWeight": "50",
           "targetReps": "8–12",
           "rest": 165,
           "loadMode": "perSide",
@@ -391,7 +391,7 @@ const DEFAULT_PLAN = {
           "name": "Adutora",
           "active": true,
           "sets": 2,
-          "targetWeight": "25",
+          "targetWeight": "30",
           "targetReps": "12–20",
           "rest": 90,
           "loadMode": "total",
@@ -410,7 +410,7 @@ const DEFAULT_PLAN = {
           "name": "Standing Calf Raise Machine",
           "active": true,
           "sets": 3,
-          "targetWeight": "35",
+          "targetWeight": "40",
           "targetReps": "10–15",
           "rest": 105,
           "loadMode": "total",
@@ -602,13 +602,32 @@ const DEFAULT_PLAN = {
           "unilateral": false
         },
         {
+          "active": true,
+          "warmup": {
+            "sets": 0,
+            "weight": "",
+            "reps": ""
+          },
+          "unilateral": false,
+          "id": "tue-cablecurl-bar",
+          "name": "Cable Curl — barra curta recta supinada",
+          "sets": 2,
+          "targetWeight": "",
+          "targetReps": "10–15",
+          "rest": 120,
+          "loadMode": "total",
+          "execution": "Polia ajustável na posição BAIXA, barra curta recta em pegada supinada (palmas para cima). Tronco firme e cotovelos junto ao corpo. Flectir os cotovelos sem balanço, manter os punhos alinhados e controlar a descida.",
+          "progression": "Calibrar a carga para 10–15 repetições limpas com 1–2 repetições em reserva; subir após 15/15 sem compensações.",
+          "notes": "Executar depois do Reverse Fly e antes de tríceps; 2 séries adicionais para flexores do cotovelo."
+        },
+        {
           "id": "tue-ohtri",
           "name": "Overhead Triceps Extension — corda dupla",
           "active": true,
           "sets": 3,
           "targetWeight": "20",
           "targetReps": "10–15",
-          "rest": 90,
+          "rest": 120,
           "loadMode": "total",
           "warmup": {
             "sets": 0,
@@ -644,7 +663,7 @@ const DEFAULT_PLAN = {
           "name": "Reverse-Grip Pushdown — barra curta recta",
           "active": true,
           "sets": 2,
-          "targetWeight": "20",
+          "targetWeight": "25",
           "targetReps": "10–15",
           "rest": 75,
           "loadMode": "total",
@@ -707,7 +726,7 @@ const DEFAULT_PLAN = {
           "name": "Chest-Supported Plate-Loaded Row",
           "active": true,
           "sets": 3,
-          "targetWeight": "",
+          "targetWeight": "25",
           "targetReps": "8–12",
           "rest": 150,
           "loadMode": "perSide",
@@ -726,7 +745,7 @@ const DEFAULT_PLAN = {
           "name": "Straight-Arm Pulldown — corda",
           "active": true,
           "sets": 2,
-          "targetWeight": "20",
+          "targetWeight": "25",
           "targetReps": "10–15",
           "rest": 90,
           "loadMode": "total",
@@ -752,7 +771,7 @@ const DEFAULT_PLAN = {
           "sets": 3,
           "targetWeight": "12.5",
           "targetReps": "8–12",
-          "rest": 90,
+          "rest": 120,
           "loadMode": "total",
           "warmup": {
             "sets": 0,
@@ -765,30 +784,30 @@ const DEFAULT_PLAN = {
           "unilateral": false
         },
         {
-          "id": "wed-bayesian",
-          "name": "Bayesian Curl unilateral — D-handle",
           "active": true,
-          "sets": 3,
-          "targetWeight": "15",
-          "targetReps": "10–15",
-          "rest": 75,
-          "loadMode": "total",
           "warmup": {
             "sets": 0,
             "weight": "",
             "reps": ""
           },
-          "execution": "D-handle individual numa polia baixa atrás do corpo. Começar pelo lado mais fraco. Manter o braço ligeiramente atrás do tronco e o ombro estável. O outro lado faz exactamente o mesmo número de repetições.",
-          "progression": "15 kg permitiu 11 reps por braço após uma série prévia a 10 kg. Usar agora 15 kg nas duas séries e progredir em repetições.",
-          "notes": "",
-          "unilateral": true
+          "unilateral": false,
+          "id": "wed-inclinecurl-db",
+          "name": "Incline Dumbbell Curl — banco inclinado 45–60°",
+          "sets": 3,
+          "targetWeight": "",
+          "targetReps": "10–15",
+          "rest": 120,
+          "loadMode": "twoDumbbells",
+          "execution": "Banco a 45–60°, costas apoiadas e braços pendentes ligeiramente atrás do tronco. Flectir os cotovelos sem mover os ombros para a frente ou balançar. Descer controladamente até amplitude confortável; parar se houver desconforto no antebraço ou pulso.",
+          "progression": "Começar com halteres leves e 1–2 repetições em reserva; subir depois de 15/15/15 com técnica consistente.",
+          "notes": "Substitui as 3 séries do Bayesian Curl sem reduzir as séries totais de quarta-feira."
         },
         {
           "id": "wed-hammer",
           "name": "Hammer Curl com halteres",
           "active": true,
           "sets": 3,
-          "targetWeight": "5",
+          "targetWeight": "6",
           "targetReps": "8–12",
           "rest": 75,
           "loadMode": "twoDumbbells",
@@ -823,21 +842,21 @@ const DEFAULT_PLAN = {
         },
         {
           "id": "wed-wristflex",
-          "name": "Wrist Curl na polia — barra curta recta",
+          "name": "Wrist Curl com halteres",
           "active": true,
           "sets": 2,
-          "targetWeight": "10",
+          "targetWeight": "4",
           "targetReps": "12–20",
           "rest": 60,
-          "loadMode": "total",
+          "loadMode": "twoDumbbells",
           "warmup": {
             "sets": 0,
             "weight": "",
             "reps": ""
           },
-          "execution": "Barra curta recta, palmas para cima. Antebraços completamente estáveis. Permitir flexão e extensão controladas do punho sem transformar o exercício numa rosca.",
+          "execution": "Com dois halteres (referência recente: 4+4 kg), antebraços apoiados nas coxas ou no banco, palmas viradas para cima. Flectir os punhos controladamente e baixar até extensão confortável, sem compensar com os cotovelos. Evitar se provocar desconforto no punho.",
           "progression": "10 kg permitiu 20 reps numa série. Estabelecer 10 kg nas duas séries. Aumentar apenas depois de atingir 20/20 com amplitude completa.",
-          "notes": "",
+          "notes": "Registos reais de 7 e 14 de outubro foram executados com dois halteres. Não é Wrist Curl na polia; 4+4 kg significa 4 kg em cada mão.",
           "unilateral": false
         },
         {
@@ -858,6 +877,25 @@ const DEFAULT_PLAN = {
           "progression": "Manter 10 kg e aumentar gradualmente as repetições a partir de 12/12.",
           "notes": "",
           "unilateral": false
+        },
+        {
+          "id": "wed-bayesian",
+          "name": "Bayesian Curl unilateral — D-handle",
+          "active": false,
+          "sets": 3,
+          "targetWeight": "10",
+          "targetReps": "10–15",
+          "rest": 75,
+          "loadMode": "total",
+          "warmup": {
+            "sets": 0,
+            "weight": "",
+            "reps": ""
+          },
+          "execution": "D-handle individual numa polia baixa atrás do corpo. Começar pelo lado mais fraco. Manter o braço ligeiramente atrás do tronco e o ombro estável. O outro lado faz exactamente o mesmo número de repetições.",
+          "progression": "15 kg permitiu 11 reps por braço após uma série prévia a 10 kg. Usar agora 15 kg nas duas séries e progredir em repetições.",
+          "notes": "",
+          "unilateral": true
         }
       ]
     },
@@ -908,7 +946,7 @@ const DEFAULT_PLAN = {
           "name": "Leg Press horizontal com stack — junto à parede",
           "active": true,
           "sets": 3,
-          "targetWeight": "65",
+          "targetWeight": "75",
           "targetReps": "10–15",
           "rest": 150,
           "loadMode": "total",
@@ -940,7 +978,7 @@ const DEFAULT_PLAN = {
           "name": "Abdutora",
           "active": true,
           "sets": 2,
-          "targetWeight": "30",
+          "targetWeight": "35",
           "targetReps": "12–20",
           "rest": 90,
           "loadMode": "total",
@@ -971,10 +1009,10 @@ const DEFAULT_PLAN = {
           "name": "Ab Coaster — Oblique Side Lift",
           "active": true,
           "sets": 2,
-          "targetWeight": "Peso corporal",
+          "targetWeight": "2.5",
           "targetReps": "10–15",
           "rest": 75,
-          "loadMode": "bodyweight",
+          "loadMode": "perSide",
           "warmup": {
             "sets": 0,
             "weight": "",
@@ -982,7 +1020,7 @@ const DEFAULT_PLAN = {
           },
           "execution": "Usar o Ab Coaster na variação Oblique Side Lift. Rodar/posicionar o carrinho para trabalhar um lado de cada vez, elevar os joelhos de forma controlada e evitar impulso. Começar pelo lado mais fraco e igualar as repetições.",
           "progression": "Manter peso corporal e consolidar 15/15 por lado com execução controlada antes de aumentar a dificuldade.",
-          "notes": "Substitui a máquina de abdominal lateral na versão final.",
+          "notes": "Alvo recente registado como 2,5+2,5 kg no Ab Coaster. A última sessão foi executada com 0+0 kg; manter carga apenas se tecnicamente tolerada.",
           "unilateral": true
         }
       ]
@@ -996,7 +1034,7 @@ const DEFAULT_PLAN = {
           "name": "Incline Chest Press Machine",
           "active": true,
           "sets": 2,
-          "targetWeight": "15",
+          "targetWeight": "20",
           "targetReps": "8–12",
           "rest": 120,
           "loadMode": "perSide",
@@ -1015,7 +1053,7 @@ const DEFAULT_PLAN = {
           "name": "Wide Chest Press — trajectória declinada",
           "active": true,
           "sets": 3,
-          "targetWeight": "",
+          "targetWeight": "20",
           "targetReps": "8–12",
           "rest": 120,
           "loadMode": "custom",
@@ -1034,7 +1072,7 @@ const DEFAULT_PLAN = {
           "name": "Lat Pulldown supinado — barra longa",
           "active": true,
           "sets": 3,
-          "targetWeight": "40",
+          "targetWeight": "45",
           "targetReps": "8–12",
           "rest": 120,
           "loadMode": "total",
@@ -1053,7 +1091,7 @@ const DEFAULT_PLAN = {
           "name": "Remada baixa aberta — barra longa",
           "active": true,
           "sets": 2,
-          "targetWeight": "",
+          "targetWeight": "40",
           "targetReps": "8–12",
           "rest": 120,
           "loadMode": "total",
@@ -1072,7 +1110,7 @@ const DEFAULT_PLAN = {
           "name": "Elevação lateral unilateral na polia — D-handle",
           "active": true,
           "sets": 3,
-          "targetWeight": "",
+          "targetWeight": "5",
           "targetReps": "10–15",
           "rest": 75,
           "loadMode": "total",
@@ -1091,7 +1129,7 @@ const DEFAULT_PLAN = {
           "name": "Shrug com halteres",
           "active": true,
           "sets": 2,
-          "targetWeight": "",
+          "targetWeight": "15",
           "targetReps": "10–15",
           "rest": 90,
           "loadMode": "twoDumbbells",
@@ -1112,7 +1150,7 @@ const DEFAULT_PLAN = {
           "sets": 3,
           "targetWeight": "20",
           "targetReps": "8–12",
-          "rest": 90,
+          "rest": 120,
           "loadMode": "custom",
           "warmup": {
             "sets": 0,
@@ -1125,11 +1163,30 @@ const DEFAULT_PLAN = {
           "unilateral": false
         },
         {
+          "active": true,
+          "warmup": {
+            "sets": 0,
+            "weight": "",
+            "reps": ""
+          },
+          "unilateral": false,
+          "id": "fri-overheadtri-rope",
+          "name": "Overhead Triceps Extension — corda dupla, polia baixa",
+          "sets": 3,
+          "targetWeight": "15",
+          "targetReps": "10–15",
+          "rest": 120,
+          "loadMode": "total",
+          "execution": "Corda dupla na polia BAIXA atrás do corpo. Ficar de costas para a torre, levar a corda para trás da cabeça, manter braços elevados e estender os cotovelos para CIMA/à frente da cabeça. Não é extensão na polia alta a empurrar para a frente nem pushdown.",
+          "progression": "Testar 15 kg (referência de terça: 15/15/15) e adaptar a carga para 10–15 repetições com boa técnica; aumentar apenas quando o topo do intervalo estiver consolidado.",
+          "notes": "Mesmo movimento de terça-feira. Executar antes do Triceps Pushdown."
+        },
+        {
           "id": "fri-pushdown",
           "name": "Triceps Pushdown — corda dupla",
           "active": true,
           "sets": 3,
-          "targetWeight": "20",
+          "targetWeight": "25",
           "targetReps": "8–12",
           "rest": 90,
           "loadMode": "total",
@@ -1165,7 +1222,7 @@ function initialState(){
     sessions:[],activeSessionId:null,
     weightHistory:[],plannedAbsences:[],planHistory:[],planBackups:[],
     profile:{name:'',goalWeight:70},
-    settings:{sounds:true,selectedDay:weekdayToPlan(new Date()),view:'workout',calendarMonth:isoDate(new Date()).slice(0,7)},
+    settings:{sounds:true,weightReminderEnabled:true,selectedDay:weekdayToPlan(new Date()),view:'workout',calendarMonth:isoDate(new Date()).slice(0,7)},
     restTimer:null,
     ui:{expandedExerciseId:null,sessionOverview:false,selectedHistoryDate:isoDate(new Date()),localPreviewAccepted:false}
   };
@@ -1220,6 +1277,29 @@ function savePlanBackupOnce(s,label,plan){
   s.planBackups.unshift({id:uid('planbackup'),at:now(),label,plan:deepClone(plan)});
   s.planBackups=s.planBackups.slice(0,10);
 }
+
+function integratePlanV84(s){
+  const revision=String(s.plan?.revision||'');
+  if(revision!==BASE_PLAN_REVISION &&
+     revision!=='2026-10-21-v83-sync-all-phase1')return;
+  savePlanBackupOnce(
+    s,'Plano anterior à atualização automática v8.4',s.plan
+  );
+  if(revision===BASE_PLAN_REVISION){
+    s.plan=deepClone(DEFAULT_PLAN);
+    return;
+  }
+  for(const day of ['Terça','Quarta','Sexta']){
+    const order=DEFAULT_PLAN.days[day].exercises.map(e=>e.id);
+    const ranking=new Map(order.map((id,i)=>[id,i]));
+    s.plan.days[day].exercises.sort(
+      (a,b)=>(ranking.get(a.id)??1000)-
+            (ranking.get(b.id)??1000)
+    );
+  }
+  s.plan.revision='2026-10-21-v84-integrated';
+}
+
 function normalizeState(s){
   const base=initialState();
   if(!s||typeof s!=='object'||Array.isArray(s))return base;
@@ -1260,6 +1340,7 @@ function normalizeState(s){
     s.plan=deepClone(DEFAULT_PLAN);
   }
 
+  integratePlanV84(s);
   s.profile={...base.profile,...(s.profile||{})};
   s.settings={...base.settings,...(s.settings||{})};
   s.ui={...base.ui,...(s.ui||{})};
@@ -1615,6 +1696,7 @@ const BUILTIN_MUSCLE_PROFILES = Object.freeze({
   'tue-lateral':{region:'shoulders',title:'OMBRO LATERAL',levels:{deltoidLateral:3,deltoidAnterior:1,deltoidPosterior:1,trapUpper:1}},
   'tue-shoulderpress':{region:'shoulders',title:'OMBROS',levels:{deltoidAnterior:3,deltoidLateral:3,tricepsLong:2,tricepsLateral:2,tricepsMedial:2,pecUpper:1}},
   'tue-reversefly':{region:'back',title:'OMBRO POSTERIOR + COSTAS',levels:{deltoidPosterior:3,rhomboid:2,trapMid:2,trapLower:1}},
+  'tue-cablecurl-bar':{region:'biceps',title:'BÍCEPS + BRAQUIAL',levels:{bicepsLong:3,bicepsShort:3,brachialis:2,forearmFlexor:1}},
   'tue-ohtri':{region:'triceps',title:'TRÍCEPS',levels:{tricepsLong:3,tricepsLateral:2,tricepsMedial:2}},
   'tue-pushdown':{region:'triceps',title:'TRÍCEPS',levels:{tricepsLateral:3,tricepsMedial:3,tricepsLong:2,forearmFlexor:1}},
   'tue-reversepush':{region:'triceps',title:'TRÍCEPS',levels:{tricepsMedial:3,tricepsLateral:2,tricepsLong:2,forearmFlexor:1}},
@@ -1625,6 +1707,7 @@ const BUILTIN_MUSCLE_PROFILES = Object.freeze({
   'wed-straightarm-pd':{region:'back',title:'DORSAL',levels:{lat:3,teres:2,tricepsLong:1}},
   'wed-seated-calves':{region:'lowerLeg',title:'GÉMEOS',levels:{soleus:3,gastro:2}},
   'wed-scott':{region:'biceps',title:'BÍCEPS',levels:{bicepsShort:3,bicepsLong:3,brachialis:2,forearmFlexor:1}},
+  'wed-inclinecurl-db':{region:'biceps',title:'BÍCEPS · ÊNFASE CABEÇA LONGA',levels:{bicepsLong:3,bicepsShort:2,brachialis:2,forearmFlexor:1}},
   'wed-bayesian':{region:'biceps',title:'BÍCEPS',levels:{bicepsLong:3,bicepsShort:2,brachialis:2,forearmFlexor:1}},
   'wed-hammer':{region:'biceps',title:'BRAÇO + ANTEBRAÇO',levels:{brachialis:3,bicepsLong:2,bicepsShort:2,forearmExtensor:2}},
   'wed-reversecurl':{region:'biceps',title:'ANTEBRAÇO + BRAÇO',levels:{forearmExtensor:3,brachialis:3,bicepsLong:2,bicepsShort:2}},
@@ -1646,6 +1729,7 @@ const BUILTIN_MUSCLE_PROFILES = Object.freeze({
   'fri-lateral':{region:'shoulders',title:'OMBRO LATERAL',levels:{deltoidLateral:3,deltoidAnterior:1,deltoidPosterior:1,trapUpper:1}},
   'fri-shrug':{region:'back',title:'TRAPÉZIO SUPERIOR',levels:{trapUpper:3,trapMid:1}},
   'fri-barcurl':{region:'biceps',title:'BÍCEPS',levels:{bicepsLong:3,bicepsShort:3,brachialis:2,forearmFlexor:1}},
+  'fri-overheadtri-rope':{region:'triceps',title:'TRÍCEPS · ÊNFASE CABEÇA LONGA',levels:{tricepsLong:3,tricepsLateral:2,tricepsMedial:2}},
   'fri-pushdown':{region:'triceps',title:'TRÍCEPS',levels:{tricepsLateral:3,tricepsMedial:3,tricepsLong:2,forearmFlexor:1}}
 });
 
@@ -1954,7 +2038,7 @@ function pauseRest(){const r=state.restTimer;if(!r)return;if(r.pausedAt){r.total
 function restElapsedMs(r){const end=r.pausedAt||now();return Math.max(0,end-r.startedAt-(r.totalPausedMs||0));}
 function ensureRestTicker(){clearInterval(restInterval);restInterval=setInterval(()=>{if(!state.restTimer){clearInterval(restInterval);return;}renderRestDock(true);checkRestFinished();},500);}
 let restFinishedSignalFor=null;
-function checkRestFinished(){const r=state.restTimer;if(!r)return;const elapsed=restElapsedMs(r)/1000;if(elapsed>=r.targetSec&&restFinishedSignalFor!==r.setId){restFinishedSignalFor=r.setId;haptic([80,60,120]);playSound('rest');}}
+function checkRestFinished(){const r=state.restTimer;if(!r)return;const elapsed=restElapsedMs(r)/1000;if(elapsed>=r.targetSec&&restFinishedSignalFor!==r.setId){restFinishedSignalFor=r.setId;haptic([350,120,450,120,550]);playSound('rest');}}
 function renderRestDock(light=false){
   const dock=document.getElementById('rest-dock');if(!dock)return;
   const r=state.restTimer;if(!r || currentSessionId!==r.sessionId){dock.classList.add('hidden');dock.innerHTML='';return;}
@@ -2075,7 +2159,20 @@ function chartSVG(points){
 function openWeightModal(){
   modal(`<button class="modal-close" data-close>×</button><h3>Registar peso corporal</h3><div class="form-grid"><label class="label">Data<input id="weight-date" type="date" class="input" value="${isoDate()}"></label><label class="label">Peso (kg)<input id="weight-value" inputmode="decimal" class="input" placeholder="62"></label></div><div class="modal-actions"><button class="secondary" data-close>Cancelar</button><button class="primary" id="weight-save">Guardar</button></div>`,root=>{root.querySelector('#weight-save').onclick=()=>{const w=parseNumber(root.querySelector('#weight-value').value),date=root.querySelector('#weight-date').value;if(!w||w<20||w>300){toast('Peso inválido.');return;}const existing=state.weightHistory.find(x=>x.date===date);if(existing)existing.weight=w;else state.weightHistory.push({id:uid('w'),date,weight:w});persist(true);closeModal();render();};});
 }
+
+function syncWeightReminderNative(){
+  try{
+    if(nativeAvailable() &&
+       window.NativeBridge.setWeightReminderEnabled){
+      window.NativeBridge.setWeightReminderEnabled(
+        state.settings.weightReminderEnabled!==false
+      );
+    }
+  }catch{}
+}
+
 function needsWeightReminder(){
+  if(state.settings.weightReminderEnabled===false)return false;
   const d=new Date();if(d.getDay()!==1)return false;const latest=[...state.weightHistory].sort((a,b)=>b.date.localeCompare(a.date))[0];return !latest||daysAgo(latest.date)>=7;
 }
 function daysAgo(date){return Math.floor((dateFromISO(isoDate())-dateFromISO(date))/86400000);}
@@ -2103,11 +2200,12 @@ function renderMore(){
   root.innerHTML=`<div class="card"><h3 class="card-title">Conta e sincronização</h3><div class="banner ${config.googleCloudConfigured?'good':'warning'}" style="margin-bottom:0"><div><strong>${config.googleCloudConfigured?'Google ligado':'Google preparado, ainda não configurado'}</strong><div class="tiny muted">O Google Sign-In e a sincronização cloud dependem das credenciais externas do projecto. Enquanto não forem configuradas, a app mantém os dados localmente e funciona offline.</div></div></div></div>
   <div class="card"><h3 class="card-title">Plano</h3><div class="btn-row" style="margin-top:10px"><button class="secondary" id="patch-btn">Aplicar patch do ChatGPT</button><button class="secondary" id="editor-btn">Editor manual</button></div><button class="ghost" id="plan-history-btn" style="width:100%;margin-top:8px">Histórico do plano</button></div>
   <div class="card"><h3 class="card-title">Dados</h3><div class="btn-row" style="margin-top:10px"><button class="secondary" id="export-btn">Exportar backup</button><button class="secondary" id="import-btn">Importar backup</button></div></div>
-  <div class="card"><h3 class="card-title">Definições</h3><label class="banner" style="margin-bottom:0"><div><strong>Sons</strong><div class="tiny muted">As vibrações permanecem activas quando suportadas.</div></div><input id="sounds-toggle" type="checkbox" ${state.settings.sounds?'checked':''}></label></div>
+  <div class="card"><h3 class="card-title">Definições</h3><label class="banner" style="margin-bottom:0"><div><strong>Sons</strong><div class="tiny muted">As vibrações permanecem activas quando suportadas.</div></div><input id="sounds-toggle" type="checkbox" ${state.settings.sounds?'checked':''}></label><label class="banner" style="margin-top:10px;margin-bottom:0"><div><strong>Lembrete semanal de peso</strong><div class="tiny muted">Segunda-feira, 09:00. Podes activar ou desactivar o aviso.</div></div><input id="weight-reminder-toggle" type="checkbox" ${state.settings.weightReminderEnabled!==false?'checked':''}></label></div>
   <div class="card slim"><div class="tiny muted">Hipertrofia Pro ${VERSION} · esquema ${SCHEMA}<br>Offline-first · autosave imediato · sem RIR.<br><span class="anatomy-credit">Mapa muscular segmentado · perfis por exercício e lado · preparado para patches futuros.</span></div></div>`;
   root.querySelector('#patch-btn').onclick=openPatchModal;root.querySelector('#editor-btn').onclick=openEditor;root.querySelector('#plan-history-btn').onclick=openPlanHistory;
   root.querySelector('#export-btn').onclick=exportBackup;root.querySelector('#import-btn').onclick=()=>{try{if(nativeAvailable()&&window.NativeBridge.importBackup){window.NativeBridge.importBackup();return;}}catch{}document.getElementById('import-file').click();};
   root.querySelector('#sounds-toggle').onchange=e=>{state.settings.sounds=e.target.checked;persist(true);};
+  root.querySelector('#weight-reminder-toggle').onchange=e=>{state.settings.weightReminderEnabled=e.target.checked;persist(true);syncWeightReminderNative();};
 }
 
 function openPatchModal(){
@@ -2340,7 +2438,7 @@ function importBackupText(text){
   if(!incoming){toast('Backup não reconhecido.');return;}
   const err=validateBackupState(incoming);if(err){toast(err);return;}
   const draft=normalizeState(deepClone(incoming));
-  openConfirm('Importar backup','Os dados actuais serão substituídos. A cópia actual fica preservada nos snapshots automáticos.',()=>{rotateSnapshot();state=draft;currentSessionId=null;persist(true);closeModal();render();toast('Backup importado.');});
+  openConfirm('Importar backup','Os dados actuais serão substituídos. A cópia actual fica preservada nos snapshots automáticos.',()=>{rotateSnapshot();state=draft;currentSessionId=null;persist(true);syncWeightReminderNative();closeModal();render();toast('Backup importado.');});
 }
 function handleImportFile(file){const reader=new FileReader();reader.onload=()=>importBackupText(String(reader.result||''));reader.readAsText(file);}
 window.receiveNativeBackup=text=>importBackupText(String(text||''));
@@ -2406,7 +2504,7 @@ function localPreviewGate(){
   modal(`<h3>Modo local</h3><p class="small muted">A conta Google obrigatória e a sincronização cloud continuam pendentes porque exigem credenciais externas do projecto. Até essas credenciais serem configuradas, os dados ficam protegidos localmente com autosave e backups.</p><div class="modal-actions"><button id="accept-local" class="primary">Continuar em modo local</button></div>`,root=>{root.querySelector('#accept-local').onclick=()=>{state.ui.localPreviewAccepted=true;persist(true);closeModal();};});
 }
 
-setupNav();setupGlobal();render();localPreviewGate();
+setupNav();setupGlobal();syncWeightReminderNative();render();localPreviewGate();
 if(activeSession())requestWakeLock();
 
 })();

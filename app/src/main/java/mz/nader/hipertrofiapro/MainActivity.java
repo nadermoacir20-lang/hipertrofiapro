@@ -18,6 +18,8 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.view.Gravity;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -61,7 +63,7 @@ public final class MainActivity extends Activity {
     private static final String APP_URL =
             "https://appassets.androidplatform.net/assets/www/index.html";
 
-    private static final String APP_VERSION = "8.2.0";
+    private static final String APP_VERSION = "8.4.0";
 
     private static final int REQ_CREATE_BACKUP = 5001;
     private static final int REQ_OPEN_BACKUP = 5002;
@@ -70,6 +72,8 @@ public final class MainActivity extends Activity {
     private static final long MAX_IMPORT_BYTES =
             8L * 1024L * 1024L;
 
+
+    private OnBackInvokedCallback backCallback;
 
     private WebView webView;
 
@@ -95,6 +99,15 @@ public final class MainActivity extends Activity {
 
         configureWindow();
         configureWebView();
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            backCallback = this::handleAppBack;
+            getOnBackInvokedDispatcher()
+                .registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    backCallback
+                );
+        }
 
         WeightReminderScheduler.scheduleNext(this);
 
@@ -1360,6 +1373,9 @@ public final class MainActivity extends Activity {
             case "tue-reversefly" ->
                     new String[]{"reverse", "pec", "deck", "shoulder", "health"};
 
+            case "tue-cablecurl-bar" ->
+                    new String[]{"straight","bar","cable","curl","good","form"};
+
             case "tue-ohtri", "fri-overheadtri-rope" ->
                     new String[]{"standing", "overhead", "cable", "triceps", "extension", "rope"};
 
@@ -1389,6 +1405,9 @@ public final class MainActivity extends Activity {
             case "wed-scott" ->
                     new String[]{"preacher", "curl", "machine"};
 
+            case "wed-inclinecurl-db" ->
+                    new String[]{"incline","dumbbell","curl","how","to","form","tutorial"};
+
             case "wed-bayesian" ->
                     new String[]{"bayesian", "cable", "curl"};
 
@@ -1399,7 +1418,7 @@ public final class MainActivity extends Activity {
                     new String[]{"hunter", "labrada", "reverse", "ez", "bar", "curl"};
 
             case "wed-wristflex" ->
-                    new String[]{"seated", "barbell", "wrist", "curl"};
+                    new String[]{"dumbbell", "seated", "wrist", "curls"};
 
 
             // QUINTA
@@ -1958,6 +1977,12 @@ public final class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
 
+        if (Build.VERSION.SDK_INT >= 33 && backCallback != null) {
+            getOnBackInvokedDispatcher()
+                .unregisterOnBackInvokedCallback(backCallback);
+            backCallback = null;
+        }
+
         closePlayerOnly();
 
 
@@ -1993,64 +2018,34 @@ public final class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        handleAppBack();
+    }
 
-        /*
-         * Se o vídeo estiver aberto,
-         * BACK fecha primeiro o vídeo.
-         */
-        if (
-                videoOverlay != null
-                        &&
-                        videoOverlay.getVisibility()
-                                ==
-                                View.VISIBLE
-        ) {
-
-            closeTechniqueVideo();
-
-            return;
+    private void handleAppBack() {
+        if (videoOverlay != null
+      && videoOverlay.getVisibility() == View.VISIBLE) {
+  closeTechniqueVideo();
+  return;
         }
-
 
         if (webView == null) {
-
-            super.onBackPressed();
-
-            return;
+  finish();
+  return;
         }
 
-
         webView.evaluateJavascript(
-                "try{" +
-                        "String(!!(" +
-                        "window.handleAndroidBack&&" +
-                        "window.handleAndroidBack()" +
-                        "))" +
-                        "}catch(e){'false'}",
-                result -> {
+  "try{String(!!(window.handleAndroidBack&&window.handleAndroidBack()))}catch(e){'false'}",
+  result -> {
+      if ("\\\"true\\\"".equals(result)) {
+          return;
+      }
 
-                    if (
-                            "\"true\""
-                                    .equals(result)
-                    ) {
-                        return;
-                    }
-
-
-                    if (
-                            webView != null
-                                    &&
-                                    webView.canGoBack()
-                    ) {
-
-                        webView.goBack();
-
-                    } else {
-
-                        MainActivity.super
-                                .onBackPressed();
-                    }
-                }
+      if (webView != null && webView.canGoBack()) {
+          webView.goBack();
+      } else {
+          finish();
+      }
+  }
         );
     }
 
@@ -2508,6 +2503,13 @@ public final class MainActivity extends Activity {
             );
         }
 
+
+        @JavascriptInterface
+        public void setWeightReminderEnabled(boolean enabled) {
+            WeightReminderScheduler.setEnabled(
+                MainActivity.this, enabled
+            );
+        }
 
         @JavascriptInterface
         public String appVersion() {

@@ -10,8 +10,8 @@ android {
         applicationId 'mz.nader.hipertrofiapro'
         minSdk 24
         targetSdk 36
-        versionCode 19
-        versionName '8.3.0'
+        versionCode 20
+        versionName '8.4.0'
     }
 
     buildTypes {
@@ -46,7 +46,7 @@ dependencies {
     implementation "androidx.media3:media3-ui:$media3_version"
 }
 
-// Hipertrofia Pro 8.3 — body map segmentado, 70+ regiões, frente/costas e intensidade.
+// Hipertrofia Pro 8.4 — body map segmentado, 70+ regiões, frente/costas e intensidade.
 // A biblioteca é fixada em body-muscles 1.0.0. O bundle é copiado para os assets
 // DURANTE o build; a aplicação instalada continua totalmente offline.
 def hpBodyMapVersion = '1.0.0'
@@ -70,7 +70,7 @@ tasks.register('prepareBodyMapVendor') {
                 URLConnection connection = new URL(sourceUrl).openConnection()
                 connection.setConnectTimeout(15000)
                 connection.setReadTimeout(30000)
-                connection.setRequestProperty('User-Agent', 'Hipertrofia-Pro-Android-Build/8.3')
+                connection.setRequestProperty('User-Agent', 'Hipertrofia-Pro-Android-Build/8.4')
                 String candidate = connection.getInputStream().getText('UTF-8')
 
                 if (candidate != null && candidate.length() > 20000 && candidate.contains('BodyMuscles') && candidate.contains('BodyChart') && candidate.contains('gluteus-maximus-left')) {
