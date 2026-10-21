@@ -9,6 +9,10 @@
   <title>Hipertrofia Pro 8</title>
   
   <style>
+/* v8.3: campos ativos acima do teclado e deslocamento seguro */
+textarea,input,[contenteditable=true]{scroll-margin-bottom:32vh;}
+.modal{overscroll-behavior:contain;scroll-padding-bottom:28vh;}
+
 :root{
   --bg:#0b0d14;--panel:#121622;--panel-2:#171c2a;--line:#252c3d;--text:#f7f8fc;--muted:#9aa4ba;
   --indigo:#6f6cff;--violet:#9c6cff;--blue:#4d9cff;--green:#42d39b;--red:#ff667a;--amber:#ffbd5a;
@@ -242,7 +246,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opa
 
   <script>
 window.HP_CONFIG = {
-  build: "v8.1.0-final-fullscreen-runtimefix",
+  build: "v8.3.0-candidate",
   productionAuthRequired: true,
   googleCloudConfigured: false,
   googleClientId: "",
@@ -255,7 +259,7 @@ window.HP_CONFIG = {
 (() => {
 'use strict';
 
-const VERSION = '8.2.0';
+const VERSION = '8.3.0';
 const SCHEMA = 7;
 const KEY = 'hipertrofia_pro_v7_state';
 const SNAP_PREFIX = 'hipertrofia_pro_v7_snapshot_';
@@ -1168,10 +1172,18 @@ function initialState(){
 }
 
 let state = loadState();
-// A app abre sempre no treino do dia. Uma sessão interrompida é oferecida para retomar, nunca forçada.
+// v8.3: retomar automaticamente a sessão previamente guardada, sem toque extra.
 state.settings.view='workout';
-state.settings.selectedDay=weekdayToPlan(new Date());
-let currentSessionId = null;
+if(!state.activeSessionId)state.settings.selectedDay=weekdayToPlan(new Date());
+const hpRecoverableSession=state.sessions.filter(s=>s?.status==='active').sort((a,b)=>(b.startedAt||0)-(a.startedAt||0))[0]||null;
+if(hpRecoverableSession){
+  state.activeSessionId=hpRecoverableSession.id;
+  state.settings.selectedDay=hpRecoverableSession.day;
+  state.ui.sessionOverview=false;
+  if(!hpRecoverableSession.exercises.some(e=>e.exerciseId===state.ui.expandedExerciseId))
+    state.ui.expandedExerciseId=hpRecoverableSession.exercises.find(e=>e.status==='pending')?.exerciseId||hpRecoverableSession.exercises[0]?.exerciseId||null;
+}
+let currentSessionId = hpRecoverableSession?.id||null;
 let saveTimer = null;
 let snapshotTimer = null;
 let restInterval = null;
@@ -1416,9 +1428,9 @@ function runMotionCue(){
   });
 }
 function motionRender(){
-  const update=()=>render();
-  if(!prefersReducedMotion()&&document.startViewTransition){try{return document.startViewTransition(update);}catch{}}
-  update();
+  // Não usar snapshots de ViewTransition: alguns WebViews exibem um flash escuro.
+  // A animação leve de animateMainIfNeeded continua disponível.
+  render();
 }
 function render(){
   destroyBodyCharts();
@@ -2306,7 +2318,11 @@ function previousGapText(s){const prev=state.sessions.filter(x=>x.id!==s.id&&(x.
 
 function backupObject(){return {type:'hipertrofia-pro-v7-backup',schema:SCHEMA,version:VERSION,createdAt:new Date().toISOString(),state};}
 function exportBackup(){
+  const integrityError=validateBackupState(state);
+  if(integrityError){toast('Exportação bloqueada: '+integrityError);return;}
   const text=JSON.stringify(backupObject(),null,2),name=`hipertrofia-pro-v7-backup-${isoDate()}.json`;
+  const check=safeJSON(text);
+  if(!check||check.type!=='hipertrofia-pro-v7-backup'||!check.state||text.length<200){toast('Exportação bloqueada: dados incompletos.');return;}
   try{if(nativeAvailable()&&window.NativeBridge.exportBackup){window.NativeBridge.exportBackup(text,name);return;}}catch{}
   const blob=new Blob([text],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
@@ -2361,6 +2377,13 @@ window.addEventListener('unhandledrejection',ev=>{console.error('Hipertrofia Pro
 
 function setupNav(){document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{if(state.settings.view===b.dataset.view)return;state.settings.view=b.dataset.view;persist();haptic(7);motionRender();});window.addEventListener('resize',()=>requestAnimationFrame(syncNavGlider));}
 function setupGlobal(){
+  // Foco assistido quando o teclado virtual aparece. Não alterar padding nativo aqui.
+  const revealFocused=()=>{const el=document.activeElement;if(!el||!el.matches?.('textarea,input,[contenteditable=true]'))return;
+    const rect=el.getBoundingClientRect();const vh=window.visualViewport?.height||window.innerHeight;
+    if(rect.bottom>vh-14||rect.top<0)el.scrollIntoView({block:'center',behavior:'instant'});
+  };
+  document.addEventListener('focusin',ev=>{if(ev.target.matches?.('textarea,input,[contenteditable=true]'))requestAnimationFrame(()=>setTimeout(revealFocused,180));});
+  window.visualViewport?.addEventListener('resize',()=>requestAnimationFrame(revealFocused));
   document.addEventListener('pointerdown',ev=>{const b=ev.target.closest?.('button');if(!b)return;b.classList.add('hp-pressed');setTimeout(()=>b.classList.remove('hp-pressed'),220);},{passive:true});
   document.getElementById('import-file').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)handleImportFile(f);e.target.value='';});
   window.addEventListener('beforeunload',()=>persist(true));
