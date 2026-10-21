@@ -44,6 +44,9 @@ import androidx.webkit.WebViewClientCompat;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -441,6 +444,26 @@ public final class MainActivity extends Activity {
             String fileName
     ) {
 
+        // Prevent creating files containing {} when Android recreates the activity.
+        try {
+            JSONObject obj = new JSONObject(json == null ? "" : json);
+            JSONObject payload = obj.optJSONObject("state");
+            if (!"hipertrofia-pro-v7-backup".equals(obj.optString("type"))
+                    || payload == null
+                    || payload.optJSONObject("plan") == null
+                    || payload.optJSONArray("sessions") == null) {
+                throw new IllegalArgumentException("Invalid backup structure");
+            }
+            File staged = new File(getFilesDir(), "pending_backup_export.json");
+            try (FileOutputStream out = new FileOutputStream(staged, false)) {
+                out.write(json.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                out.getFD().sync();
+            }
+        } catch (Exception ex) {
+            Toast.makeText(this, "Backup inválido: exportação cancelada.", Toast.LENGTH_LONG).show();
+            return;
+        }
         pendingExportJson = json;
 
         pendingExportName =
@@ -635,17 +658,32 @@ public final class MainActivity extends Activity {
                     );
                 }
 
-                out.write(
-                        (
-                                pendingExportJson == null
-                                        ?
-                                        "{}"
-                                        :
-                                        pendingExportJson
-                        ).getBytes(
-                                StandardCharsets.UTF_8
-                        )
-                );
+                String exportText = pendingExportJson;
+                if (exportText == null) {
+                    File staged = new File(getFilesDir(), "pending_backup_export.json");
+                    if (staged.length() <= 0 || staged.length() > MAX_IMPORT_BYTES) {
+                        throw new IllegalStateException("Backup temporário ausente");
+                    }
+                    byte[] bytes = new byte[(int) staged.length()];
+                    try (FileInputStream in = new FileInputStream(staged)) {
+                        int pos = 0;
+                        while (pos < bytes.length) {
+                            int n = in.read(bytes, pos, bytes.length - pos);
+                            if (n < 0) throw new IllegalStateException("Backup temporário incompleto");
+                            pos += n;
+                        }
+                    }
+                    exportText = new String(bytes, StandardCharsets.UTF_8);
+                }
+                JSONObject check = new JSONObject(exportText);
+                JSONObject exportedState = check.optJSONObject("state");
+                if (!"hipertrofia-pro-v7-backup".equals(check.optString("type"))
+                        || exportedState == null
+                        || exportedState.optJSONObject("plan") == null
+                        || exportedState.optJSONArray("sessions") == null) {
+                    throw new IllegalStateException("Backup vazio ou corrompido");
+                }
+                out.write(exportText.getBytes(StandardCharsets.UTF_8));
 
                 out.flush();
 
@@ -667,6 +705,7 @@ public final class MainActivity extends Activity {
 
                 pendingExportJson = null;
                 pendingExportName = null;
+                new File(getFilesDir(), "pending_backup_export.json").delete();
             }
 
         } else if (
@@ -1321,7 +1360,7 @@ public final class MainActivity extends Activity {
             case "tue-reversefly" ->
                     new String[]{"reverse", "pec", "deck", "shoulder", "health"};
 
-            case "tue-ohtri" ->
+            case "tue-ohtri", "fri-overheadtri-rope" ->
                     new String[]{"standing", "overhead", "cable", "triceps", "extension", "rope"};
 
             case "tue-pushdown", "fri-pushdown" ->
