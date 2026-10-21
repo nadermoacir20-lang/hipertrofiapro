@@ -1,0 +1,1218 @@
+
+name: Hipertrofia Pro v8.4 - Atualizacao completa
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Preparar Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - name: Instalar Android 16
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;35.0.0"
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Preservar chave de assinatura
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: hipertrofia-pro-debug-signing-v1
+
+      - name: Integrar codigo v8.4
+        shell: bash
+        run: |
+          cat > /tmp/hp_upgrade_v84.py <<'PY'
+          import json
+          import re
+          import unicodedata
+          from pathlib import Path
+
+          ROOT = Path(".")
+          HTML = ROOT / "app/src/main/assets/www/index.html"
+          JAVA = ROOT / "app/src/main/java/mz/nader/hipertrofiapro/MainActivity.java"
+          SCHEDULER = ROOT / "app/src/main/java/mz/nader/hipertrofiapro/WeightReminderScheduler.java"
+          RECEIVER = ROOT / "app/src/main/java/mz/nader/hipertrofiapro/WeightReminderReceiver.java"
+          GRADLE = ROOT / "app/build.gradle"
+          BUILD = ROOT / ".github/workflows/build-apk.yml"
+          VIDEOS = ROOT / "app/src/main/assets/videos"
+          REVISION = "2026-10-21-v84-integrated"
+
+          def read(path):
+              return path.read_text(encoding="utf-8")
+
+          def write(path, content):
+              path.write_text(content, encoding="utf-8")
+
+          def replace_one(src, before, after, label):
+              count = src.count(before)
+              if count != 1:
+                  raise RuntimeError(
+                      f"{label}: esperado 1 trecho, encontrados {count}"
+                  )
+              return src.replace(before, after, 1)
+
+          def check(condition, message):
+              if not condition:
+                  raise RuntimeError(message)
+
+          html = read(HTML)
+          java = read(JAVA)
+
+          already_updated = (
+              'private static final String APP_VERSION = "8.4.0";'
+              in java
+          )
+
+          if not already_updated:
+              # ==================================================
+              # 1. PLANO COMPLETO - PATCHES 1 E 2
+              # ==================================================
+              prefix = "const DEFAULT_PLAN = "
+              start = html.index(prefix) + len(prefix)
+              plan, consumed = json.JSONDecoder().raw_decode(
+                  html[start:]
+              )
+
+              updates = [
+                  ("Segunda", "mon-legpress", {"targetWeight": "50"}),
+                  ("Segunda", "mon-adductor", {"targetWeight": "30"}),
+                  ("Segunda", "mon-calves", {"targetWeight": "40"}),
+                  ("Terça", "tue-reversepush", {"targetWeight": "25"}),
+                  ("Quarta", "wed-chestsupported-row", {"targetWeight": "25"}),
+                  ("Quarta", "wed-straightarm-pd", {"targetWeight": "25"}),
+                  ("Quarta", "wed-bayesian", {"targetWeight": "10"}),
+                  ("Quarta", "wed-hammer", {"targetWeight": "6"}),
+                  (
+                      "Quarta", "wed-wristflex",
+                      {
+                          "name": "Wrist Curl com halteres",
+                          "targetWeight": "4",
+                          "loadMode": "twoDumbbells",
+                          "execution": (
+                              "Com dois halteres (referência recente: "
+                              "4+4 kg), antebraços apoiados nas coxas "
+                              "ou no banco, palmas viradas para cima. "
+                              "Flectir os punhos controladamente e "
+                              "baixar até extensão confortável, sem "
+                              "compensar com os cotovelos. Evitar se "
+                              "provocar desconforto no punho."
+                          ),
+                          "notes": (
+                              "Registos reais de 7 e 14 de outubro "
+                              "foram executados com dois halteres. "
+                              "Não é Wrist Curl na polia; 4+4 kg "
+                              "significa 4 kg em cada mão."
+                          )
+                      }
+                  ),
+                  ("Quinta", "thu-legpress", {"targetWeight": "75"}),
+                  ("Quinta", "thu-abductor", {"targetWeight": "35"}),
+                  (
+                      "Quinta", "thu-sidebend",
+                      {
+                          "targetWeight": "2.5",
+                          "loadMode": "perSide",
+                          "notes": (
+                              "Alvo recente registado como 2,5+2,5 kg "
+                              "no Ab Coaster. A última sessão foi "
+                              "executada com 0+0 kg; manter carga "
+                              "apenas se tecnicamente tolerada."
+                          )
+                      }
+                  ),
+                  ("Sexta", "fri-incline", {"targetWeight": "20"}),
+                  ("Sexta", "fri-flat", {"targetWeight": "20"}),
+                  ("Sexta", "fri-neutral-pd", {"targetWeight": "45"}),
+                  ("Sexta", "fri-open-row", {"targetWeight": "40"}),
+                  ("Sexta", "fri-lateral", {"targetWeight": "5"}),
+                  ("Sexta", "fri-shrug", {"targetWeight": "15"}),
+                  ("Sexta", "fri-pushdown", {"targetWeight": "25"}),
+                  ("Terça", "tue-ohtri", {"rest": 120}),
+                  ("Quarta", "wed-scott", {"rest": 120}),
+                  ("Sexta", "fri-barcurl", {"rest": 120})
+              ]
+
+              check(len(updates) == 22, "Patch 1 incompleto")
+
+              def find_exercise(day, ex_id):
+                  exercises = plan["days"][day]["exercises"]
+                  found = [e for e in exercises if e["id"] == ex_id]
+                  check(
+                      len(found) == 1,
+                      f"Exercício não encontrado: {day}/{ex_id}"
+                  )
+                  return found[0]
+
+              for day, ex_id, changes in updates:
+                  find_exercise(day, ex_id).update(changes)
+
+              find_exercise(
+                  "Quarta", "wed-bayesian"
+              )["active"] = False
+
+              additions = {
+                  "Terça": {
+                      "id": "tue-cablecurl-bar",
+                      "name": "Cable Curl — barra curta recta supinada",
+                      "sets": 2,
+                      "targetWeight": "",
+                      "targetReps": "10–15",
+                      "rest": 120,
+                      "loadMode": "total",
+                      "execution": (
+                          "Polia ajustável na posição BAIXA, barra "
+                          "curta recta em pegada supinada "
+                          "(palmas para cima). Tronco firme e "
+                          "cotovelos junto ao corpo. Flectir os "
+                          "cotovelos sem balanço, manter os punhos "
+                          "alinhados e controlar a descida."
+                      ),
+                      "progression": (
+                          "Calibrar a carga para 10–15 repetições "
+                          "limpas com 1–2 repetições em reserva; "
+                          "subir após 15/15 sem compensações."
+                      ),
+                      "notes": (
+                          "Executar depois do Reverse Fly e antes "
+                          "de tríceps; 2 séries adicionais para "
+                          "flexores do cotovelo."
+                      )
+                  },
+                  "Quarta": {
+                      "id": "wed-inclinecurl-db",
+                      "name": (
+                          "Incline Dumbbell Curl — "
+                          "banco inclinado 45–60°"
+                      ),
+                      "sets": 3,
+                      "targetWeight": "",
+                      "targetReps": "10–15",
+                      "rest": 120,
+                      "loadMode": "twoDumbbells",
+                      "execution": (
+                          "Banco a 45–60°, costas apoiadas e braços "
+                          "pendentes ligeiramente atrás do tronco. "
+                          "Flectir os cotovelos sem mover os ombros "
+                          "para a frente ou balançar. Descer "
+                          "controladamente até amplitude confortável; "
+                          "parar se houver desconforto no antebraço "
+                          "ou pulso."
+                      ),
+                      "progression": (
+                          "Começar com halteres leves e 1–2 "
+                          "repetições em reserva; subir depois de "
+                          "15/15/15 com técnica consistente."
+                      ),
+                      "notes": (
+                          "Substitui as 3 séries do Bayesian Curl "
+                          "sem reduzir as séries totais de quarta-feira."
+                      )
+                  },
+                  "Sexta": {
+                      "id": "fri-overheadtri-rope",
+                      "name": (
+                          "Overhead Triceps Extension — "
+                          "corda dupla, polia baixa"
+                      ),
+                      "sets": 3,
+                      "targetWeight": "15",
+                      "targetReps": "10–15",
+                      "rest": 120,
+                      "loadMode": "total",
+                      "execution": (
+                          "Corda dupla na polia BAIXA atrás do corpo. "
+                          "Ficar de costas para a torre, levar a "
+                          "corda para trás da cabeça, manter braços "
+                          "elevados e estender os cotovelos para "
+                          "CIMA/à frente da cabeça. Não é extensão "
+                          "na polia alta a empurrar para a frente "
+                          "nem pushdown."
+                      ),
+                      "progression": (
+                          "Testar 15 kg (referência de terça: "
+                          "15/15/15) e adaptar a carga para 10–15 "
+                          "repetições com boa técnica; aumentar "
+                          "apenas quando o topo do intervalo "
+                          "estiver consolidado."
+                      ),
+                      "notes": (
+                          "Mesmo movimento de terça-feira. "
+                          "Executar antes do Triceps Pushdown."
+                      )
+                  }
+              }
+
+              for day, addition in additions.items():
+                  ex_id = addition["id"]
+                  existing_ids = [
+                      e["id"] for e in
+                      plan["days"][day]["exercises"]
+                  ]
+                  check(
+                      ex_id not in existing_ids,
+                      "Exercício duplicado: " + ex_id
+                  )
+                  exercise = {
+                      "active": True,
+                      "warmup": {
+                          "sets": 0,
+                          "weight": "",
+                          "reps": ""
+                      },
+                      "unilateral": False,
+                      **addition
+                  }
+                  plan["days"][day]["exercises"].append(exercise)
+
+              orders = {
+                  "Terça": [
+                      "tue-incline",
+                      "tue-flat",
+                      "tue-fly",
+                      "tue-lateral",
+                      "tue-shoulderpress",
+                      "tue-reversefly",
+                      "tue-cablecurl-bar",
+                      "tue-ohtri",
+                      "tue-pushdown",
+                      "tue-reversepush"
+                  ],
+                  "Quarta": [
+                      "wed-neutral-pd",
+                      "wed-close-row",
+                      "wed-chestsupported-row",
+                      "wed-straightarm-pd",
+                      "wed-seated-calves",
+                      "wed-scott",
+                      "wed-inclinecurl-db",
+                      "wed-hammer",
+                      "wed-reversecurl",
+                      "wed-wristflex",
+                      "wed-wristext",
+                      "wed-bayesian"
+                  ],
+                  "Sexta": [
+                      "fri-incline",
+                      "fri-flat",
+                      "fri-neutral-pd",
+                      "fri-open-row",
+                      "fri-lateral",
+                      "fri-shrug",
+                      "fri-barcurl",
+                      "fri-overheadtri-rope",
+                      "fri-pushdown"
+                  ]
+              }
+
+              for day, ids in orders.items():
+                  old = plan["days"][day]["exercises"]
+                  by_id = {e["id"]: e for e in old}
+                  check(
+                      len(old) == len(by_id),
+                      "IDs duplicados em " + day
+                  )
+                  check(
+                      set(ids) == set(by_id),
+                      "Ordem incompleta em " + day
+                  )
+                  plan["days"][day]["exercises"] = [
+                      by_id[ex_id] for ex_id in ids
+                  ]
+
+              plan["revision"] = REVISION
+
+              new_plan = json.dumps(
+                  plan,
+                  ensure_ascii=False,
+                  indent=2
+              )
+              html = (
+                  html[:start]
+                  + new_plan
+                  + html[start + consumed:]
+              )
+
+              # ==================================================
+              # 2. BODY MAPS
+              # ==================================================
+              html = replace_one(
+                  html,
+                  "  'tue-ohtri':",
+                  (
+                      "  'tue-cablecurl-bar':"
+                      "{region:'biceps',"
+                      "title:'BÍCEPS + BRAQUIAL',"
+                      "levels:{bicepsLong:3,bicepsShort:3,"
+                      "brachialis:2,forearmFlexor:1}},\n"
+                      "  'tue-ohtri':"
+                  ),
+                  "Body Map Cable Curl"
+              )
+
+              html = replace_one(
+                  html,
+                  "  'wed-bayesian':",
+                  (
+                      "  'wed-inclinecurl-db':"
+                      "{region:'biceps',"
+                      "title:'BÍCEPS · ÊNFASE CABEÇA LONGA',"
+                      "levels:{bicepsLong:3,bicepsShort:2,"
+                      "brachialis:2,forearmFlexor:1}},\n"
+                      "  'wed-bayesian':"
+                  ),
+                  "Body Map Incline Curl"
+              )
+
+              html = replace_one(
+                  html,
+                  "  'fri-pushdown':",
+                  (
+                      "  'fri-overheadtri-rope':"
+                      "{region:'triceps',"
+                      "title:'TRÍCEPS · ÊNFASE CABEÇA LONGA',"
+                      "levels:{tricepsLong:3,"
+                      "tricepsLateral:2,tricepsMedial:2}},\n"
+                      "  'fri-pushdown':"
+                  ),
+                  "Body Map Overhead Triceps"
+              )
+
+              # ==================================================
+              # 3. VERSAO, BACKUP E MIGRACAO DO PLANO
+              # ==================================================
+              html = replace_one(
+                  html,
+                  "const VERSION = '8.3.0';",
+                  "const VERSION = '8.4.0';",
+                  "Versão HTML"
+              )
+
+              migration = """
+          function integratePlanV84(s){
+            const revision=String(s.plan?.revision||'');
+            if(revision!==BASE_PLAN_REVISION &&
+               revision!=='2026-10-21-v83-sync-all-phase1')return;
+            savePlanBackupOnce(
+              s,'Plano anterior à atualização automática v8.4',s.plan
+            );
+            if(revision===BASE_PLAN_REVISION){
+              s.plan=deepClone(DEFAULT_PLAN);
+              return;
+            }
+            for(const day of ['Terça','Quarta','Sexta']){
+              const order=DEFAULT_PLAN.days[day].exercises.map(e=>e.id);
+              const ranking=new Map(order.map((id,i)=>[id,i]));
+              s.plan.days[day].exercises.sort(
+                (a,b)=>(ranking.get(a.id)??1000)-
+                      (ranking.get(b.id)??1000)
+              );
+            }
+            s.plan.revision='2026-10-21-v84-integrated';
+          }
+          """
+              html = replace_one(
+                  html,
+                  "function normalizeState(s){",
+                  migration + "\nfunction normalizeState(s){",
+                  "Migração do plano v8.4"
+              )
+
+              html = replace_one(
+                  html,
+                  "  s.profile={...base.profile,...(s.profile||{})};",
+                  (
+                      "  integratePlanV84(s);\n"
+                      "  s.profile={...base.profile,...(s.profile||{})};"
+                  ),
+                  "Ativar migração do plano"
+              )
+
+              # ==================================================
+              # 4. VIBRACAO DO FINAL DO DESCANSO
+              # ==================================================
+              html = replace_one(
+                  html,
+                  "haptic([80,60,120]);playSound('rest');",
+                  "haptic([350,120,450,120,550]);playSound('rest');",
+                  "Vibração do descanso"
+              )
+
+              # ==================================================
+              # 5. LEMBRETE DE PESO - INTERFACE
+              # ==================================================
+              html = replace_one(
+                  html,
+                  "settings:{sounds:true,selectedDay:",
+                  (
+                      "settings:{sounds:true,"
+                      "weightReminderEnabled:true,selectedDay:"
+                  ),
+                  "Definição inicial do lembrete"
+              )
+
+              sync_function = """
+          function syncWeightReminderNative(){
+            try{
+              if(nativeAvailable() &&
+                 window.NativeBridge.setWeightReminderEnabled){
+                window.NativeBridge.setWeightReminderEnabled(
+                  state.settings.weightReminderEnabled!==false
+                );
+              }
+            }catch{}
+          }
+          """
+
+              html = replace_one(
+                  html,
+                  "function needsWeightReminder(){",
+                  (
+                      sync_function
+                      + "\nfunction needsWeightReminder(){\n"
+                      + "  if(state.settings.weightReminderEnabled===false)"
+                      + "return false;"
+                  ),
+                  "Lembrete nas páginas da app"
+              )
+
+              old_settings = (
+                  '<div class="card"><h3 class="card-title">'
+                  'Definições</h3><label class="banner" '
+                  'style="margin-bottom:0"><div>'
+                  '<strong>Sons</strong>'
+                  '<div class="tiny muted">'
+                  'As vibrações permanecem activas '
+                  'quando suportadas.</div></div>'
+                  '<input id="sounds-toggle" type="checkbox" '
+                  "${state.settings.sounds?'checked':''}>"
+                  '</label></div>'
+              )
+
+              new_settings = (
+                  '<div class="card"><h3 class="card-title">'
+                  'Definições</h3>'
+                  '<label class="banner" style="margin-bottom:0">'
+                  '<div><strong>Sons</strong>'
+                  '<div class="tiny muted">'
+                  'As vibrações permanecem activas '
+                  'quando suportadas.</div></div>'
+                  '<input id="sounds-toggle" type="checkbox" '
+                  "${state.settings.sounds?'checked':''}>"
+                  '</label>'
+                  '<label class="banner" '
+                  'style="margin-top:10px;margin-bottom:0">'
+                  '<div><strong>Lembrete semanal de peso</strong>'
+                  '<div class="tiny muted">'
+                  'Segunda-feira, 09:00. '
+                  'Podes activar ou desactivar o aviso.'
+                  '</div></div>'
+                  '<input id="weight-reminder-toggle" '
+                  'type="checkbox" '
+                  "${state.settings.weightReminderEnabled"
+                  "!==false?'checked':''}>"
+                  '</label></div>'
+              )
+
+              html = replace_one(
+                  html,
+                  old_settings,
+                  new_settings,
+                  "Controlo visual do lembrete"
+              )
+
+              html = replace_one(
+                  html,
+                  (
+                      "  root.querySelector('#sounds-toggle')."
+                      "onchange=e=>{state.settings.sounds="
+                      "e.target.checked;persist(true);};"
+                  ),
+                  (
+                      "  root.querySelector('#sounds-toggle')."
+                      "onchange=e=>{state.settings.sounds="
+                      "e.target.checked;persist(true);};\n"
+                      "  root.querySelector('#weight-reminder-toggle')."
+                      "onchange=e=>{"
+                      "state.settings.weightReminderEnabled="
+                      "e.target.checked;"
+                      "persist(true);syncWeightReminderNative();};"
+                  ),
+                  "Evento do lembrete"
+              )
+
+              html = replace_one(
+                  html,
+                  (
+                      "setupNav();setupGlobal();render();"
+                      "localPreviewGate();"
+                  ),
+                  (
+                      "setupNav();setupGlobal();"
+                      "syncWeightReminderNative();render();"
+                      "localPreviewGate();"
+                  ),
+                  "Sincronização inicial do lembrete"
+              )
+
+              html = replace_one(
+                  html,
+                  (
+                      "state=draft;currentSessionId=null;"
+                      "persist(true);closeModal();render();"
+                      "toast('Backup importado.');"
+                  ),
+                  (
+                      "state=draft;currentSessionId=null;"
+                      "persist(true);syncWeightReminderNative();"
+                      "closeModal();render();"
+                      "toast('Backup importado.');"
+                  ),
+                  "Sincronização após importar backup"
+              )
+
+              # ==================================================
+              # 6. MAINACTIVITY - ANDROID BACK
+              # ==================================================
+              java = replace_one(
+                  java,
+                  "import android.view.Gravity;",
+                  (
+                      "import android.view.Gravity;\n"
+                      "import android.window.OnBackInvokedCallback;\n"
+                      "import android.window.OnBackInvokedDispatcher;"
+                  ),
+                  "Imports Android Back"
+              )
+
+              java = replace_one(
+                  java,
+                  'private static final String APP_VERSION = "8.2.0";',
+                  'private static final String APP_VERSION = "8.4.0";',
+                  "Versão Java"
+              )
+
+              java = replace_one(
+                  java,
+                  "    private WebView webView;",
+                  (
+                      "    private OnBackInvokedCallback backCallback;\n\n"
+                      "    private WebView webView;"
+                  ),
+                  "Campo Android Back"
+              )
+
+              java = replace_one(
+                  java,
+                  (
+                      "        configureWebView();\n\n"
+                      "        WeightReminderScheduler.scheduleNext(this);"
+                  ),
+                  (
+                      "        configureWebView();\n\n"
+                      "        if (Build.VERSION.SDK_INT >= 33) {\n"
+                      "            backCallback = this::handleAppBack;\n"
+                      "            getOnBackInvokedDispatcher()\n"
+                      "                .registerOnBackInvokedCallback(\n"
+                      "                    OnBackInvokedDispatcher."
+                      "PRIORITY_DEFAULT,\n"
+                      "                    backCallback\n"
+                      "                );\n"
+                      "        }\n\n"
+                      "        WeightReminderScheduler.scheduleNext(this);"
+                  ),
+                  "Registo Android Back"
+              )
+
+              java = replace_one(
+                  java,
+                  (
+                      "    protected void onDestroy() {\n\n"
+                      "        closePlayerOnly();"
+                  ),
+                  (
+                      "    protected void onDestroy() {\n\n"
+                      "        if (Build.VERSION.SDK_INT >= 33 "
+                      "&& backCallback != null) {\n"
+                      "            getOnBackInvokedDispatcher()\n"
+                      "                .unregisterOnBackInvokedCallback("
+                      "backCallback);\n"
+                      "            backCallback = null;\n"
+                      "        }\n\n"
+                      "        closePlayerOnly();"
+                  ),
+                  "Libertar callback Android Back"
+              )
+
+              signature = "    public void onBackPressed()"
+              at = java.index(signature)
+              back_start = java.rfind(
+                  "    @Override", 0, at
+              )
+              back_end = java.index(
+                  "    /*\n"
+                  "     * ============================================================\n"
+                  "     * UTILIDADES",
+                  at
+              )
+
+              check(
+                  back_start >= 0 and back_end > back_start,
+                  "Não foi possível localizar onBackPressed"
+              )
+
+              new_back = """
+              @Override
+              @SuppressWarnings("deprecation")
+              public void onBackPressed() {
+                  handleAppBack();
+              }
+
+              private void handleAppBack() {
+                  if (videoOverlay != null
+                          && videoOverlay.getVisibility() == View.VISIBLE) {
+                      closeTechniqueVideo();
+                      return;
+                  }
+
+                  if (webView == null) {
+                      finish();
+                      return;
+                  }
+
+                  webView.evaluateJavascript(
+                      "try{String(!!(window.handleAndroidBack&&window.handleAndroidBack()))}catch(e){'false'}",
+                      result -> {
+                          if ("\\\\\\"true\\\\\\"".equals(result)) {
+                              return;
+                          }
+
+                          if (webView != null && webView.canGoBack()) {
+                              webView.goBack();
+                          } else {
+                              finish();
+                          }
+                      }
+                  );
+              }
+
+
+          """
+              # O código Java tem indentação de quatro espaços.
+              new_back = "\n".join(
+                  line[10:] if line.startswith("          ") else line
+                  for line in new_back.splitlines()
+              ).lstrip("\n") + "\n"
+
+              java = (
+                  java[:back_start]
+                  + new_back
+                  + java[back_end:]
+              )
+
+              # ==================================================
+              # 7. VIDEOS DOS NOVOS EXERCICIOS
+              # ==================================================
+              java = replace_one(
+                  java,
+                  '            case "tue-ohtri", "fri-overheadtri-rope" ->',
+                  (
+                      '            case "tue-cablecurl-bar" ->\n'
+                      '                    new String[]{"straight",'
+                      '"bar","cable","curl","good","form"};\n\n'
+                      '            case "tue-ohtri", "fri-overheadtri-rope" ->'
+                  ),
+                  "Vídeo Cable Curl"
+              )
+
+              java = replace_one(
+                  java,
+                  '            case "wed-bayesian" ->',
+                  (
+                      '            case "wed-inclinecurl-db" ->\n'
+                      '                    new String[]{"incline",'
+                      '"dumbbell","curl","how","to","form","tutorial"};\n\n'
+                      '            case "wed-bayesian" ->'
+                  ),
+                  "Vídeo Incline Curl"
+              )
+
+              java = replace_one(
+                  java,
+                  'new String[]{"seated", "barbell", "wrist", "curl"};',
+                  'new String[]{"dumbbell", "seated", "wrist", "curls"};',
+                  "Vídeo Wrist Curl com halteres"
+              )
+
+              # ==================================================
+              # 8. CONTROLO NATIVO DO LEMBRETE
+              # ==================================================
+              java = replace_one(
+                  java,
+                  (
+                      "        @JavascriptInterface\n"
+                      "        public String appVersion() {"
+                  ),
+                  (
+                      "        @JavascriptInterface\n"
+                      "        public void setWeightReminderEnabled("
+                      "boolean enabled) {\n"
+                      "            WeightReminderScheduler.setEnabled(\n"
+                      "                MainActivity.this, enabled\n"
+                      "            );\n"
+                      "        }\n\n"
+                      "        @JavascriptInterface\n"
+                      "        public String appVersion() {"
+                  ),
+                  "Bridge do lembrete"
+              )
+
+              # ==================================================
+              # 9. AGENDADOR DO LEMBRETE
+              # ==================================================
+              scheduler = """package mz.nader.hipertrofiapro;
+
+          import android.app.AlarmManager;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.os.Build;
+
+          import java.util.Calendar;
+
+          final class WeightReminderScheduler {
+              static final String CHANNEL_ID = "weekly_weight";
+              private static final String PREFS = "hp_weight_reminder";
+              private static final int REQUEST_CODE = 7001;
+              private static final int NOTIFICATION_ID = 7101;
+
+              private WeightReminderScheduler() {}
+
+              static boolean isEnabled(Context context) {
+                  return context.getSharedPreferences(
+                          PREFS, Context.MODE_PRIVATE
+                  ).getBoolean("enabled", true);
+              }
+
+              static void setEnabled(Context context, boolean enabled) {
+                  context.getSharedPreferences(
+                          PREFS, Context.MODE_PRIVATE
+                  ).edit().putBoolean("enabled", enabled).apply();
+
+                  if (enabled) {
+                      scheduleNext(context);
+                  } else {
+                      cancel(context);
+                  }
+              }
+
+              static void ensureChannel(Context context) {
+                  if (Build.VERSION.SDK_INT < 26) return;
+
+                  NotificationManager manager =
+                          context.getSystemService(
+                                  NotificationManager.class
+                          );
+
+                  if (manager == null) return;
+
+                  NotificationChannel channel = new NotificationChannel(
+                          CHANNEL_ID,
+                          "Registo semanal de peso",
+                          NotificationManager.IMPORTANCE_DEFAULT
+                  );
+
+                  channel.setDescription(
+                          "Lembrete semanal para actualizar o peso corporal."
+                  );
+
+                  manager.createNotificationChannel(channel);
+              }
+
+              private static PendingIntent reminderIntent(Context context) {
+                  Intent intent = new Intent(
+                          context, WeightReminderReceiver.class
+                  );
+
+                  return PendingIntent.getBroadcast(
+                          context,
+                          REQUEST_CODE,
+                          intent,
+                          PendingIntent.FLAG_UPDATE_CURRENT
+                                  | PendingIntent.FLAG_IMMUTABLE
+                  );
+              }
+
+              static void cancel(Context context) {
+                  AlarmManager alarm =
+                          (AlarmManager) context.getSystemService(
+                                  Context.ALARM_SERVICE
+                          );
+
+                  PendingIntent pending = reminderIntent(context);
+
+                  if (alarm != null) {
+                      alarm.cancel(pending);
+                  }
+
+                  pending.cancel();
+
+                  NotificationManager manager =
+                          (NotificationManager) context.getSystemService(
+                                  Context.NOTIFICATION_SERVICE
+                          );
+
+                  if (manager != null) {
+                      manager.cancel(NOTIFICATION_ID);
+                  }
+              }
+
+              static void scheduleNext(Context context) {
+                  if (!isEnabled(context)) {
+                      cancel(context);
+                      return;
+                  }
+
+                  ensureChannel(context);
+
+                  AlarmManager alarm =
+                          (AlarmManager) context.getSystemService(
+                                  Context.ALARM_SERVICE
+                          );
+
+                  if (alarm == null) return;
+
+                  Calendar now = Calendar.getInstance();
+                  Calendar next = Calendar.getInstance();
+
+                  next.set(Calendar.HOUR_OF_DAY, 9);
+                  next.set(Calendar.MINUTE, 0);
+                  next.set(Calendar.SECOND, 0);
+                  next.set(Calendar.MILLISECOND, 0);
+
+                  int today = now.get(Calendar.DAY_OF_WEEK);
+                  int daysUntilMonday =
+                          (Calendar.MONDAY - today + 7) % 7;
+
+                  if (daysUntilMonday == 0 && !next.after(now)) {
+                      daysUntilMonday = 7;
+                  }
+
+                  next.add(
+                          Calendar.DAY_OF_YEAR,
+                          daysUntilMonday
+                  );
+
+                  alarm.setAndAllowWhileIdle(
+                          AlarmManager.RTC_WAKEUP,
+                          next.getTimeInMillis(),
+                          reminderIntent(context)
+                  );
+              }
+          }
+          """
+              scheduler = "\n".join(
+                  line[10:] if line.startswith("          ") else line
+                  for line in scheduler.splitlines()
+              ).lstrip("\n") + "\n"
+
+              receiver = read(RECEIVER)
+              receiver = replace_one(
+                  receiver,
+                  (
+                      "        try {\n"
+                      "            if (needsReminder(context))"
+                      " showReminder(context);"
+                  ),
+                  (
+                      "        try {\n"
+                      "            if (!WeightReminderScheduler."
+                      "isEnabled(context)) return;\n"
+                      "            if (needsReminder(context))"
+                      " showReminder(context);"
+                  ),
+                  "Receção do lembrete"
+              )
+
+              # ==================================================
+              # 10. VERSAO GRADLE E WORKFLOW PRINCIPAL
+              # ==================================================
+              gradle = read(GRADLE)
+              gradle = replace_one(
+                  gradle,
+                  "versionCode 19",
+                  "versionCode 20",
+                  "Código de versão"
+              )
+              gradle = replace_one(
+                  gradle,
+                  "versionName '8.3.0'",
+                  "versionName '8.4.0'",
+                  "Nome de versão"
+              )
+              gradle = gradle.replace(
+                  "Hipertrofia Pro 8.3",
+                  "Hipertrofia Pro 8.4"
+              )
+              gradle = gradle.replace(
+                  "Hipertrofia-Pro-Android-Build/8.3",
+                  "Hipertrofia-Pro-Android-Build/8.4"
+              )
+
+              build = read(BUILD)
+              check(
+                  "Hipertrofia-Pro-v7" in build,
+                  "Nome antigo do APK não encontrado"
+              )
+              build = build.replace(
+                  "Hipertrofia-Pro-v7",
+                  "Hipertrofia-Pro-v8.4"
+              )
+
+              # Só escrevemos depois de preparar tudo.
+              write(HTML, html)
+              write(JAVA, java)
+              write(SCHEDULER, scheduler)
+              write(RECEIVER, receiver)
+              write(GRADLE, gradle)
+              write(BUILD, build)
+
+          # ======================================================
+          # 11. VERIFICACOES DE INTEGRIDADE
+          # ======================================================
+          html = read(HTML)
+          java = read(JAVA)
+          gradle = read(GRADLE)
+          scheduler = read(SCHEDULER)
+
+          check(
+              "const VERSION = '8.4.0';" in html,
+              "Versão HTML inválida"
+          )
+          check(
+              'APP_VERSION = "8.4.0"' in java,
+              "Versão Java inválida"
+          )
+          check(
+              "versionCode 20" in gradle
+              and "versionName '8.4.0'" in gradle,
+              "Versão Gradle inválida"
+          )
+
+          check(
+              "const SCHEMA = 7;" in html,
+              "Schema do backup foi alterado"
+          )
+          check(
+              "hipertrofia_pro_v7_state" in html
+              and "hipertrofia-pro-v7-backup" in html,
+              "Compatibilidade do backup perdida"
+          )
+
+          prefix = "const DEFAULT_PLAN = "
+          pos = html.index(prefix) + len(prefix)
+          plan, _ = json.JSONDecoder().raw_decode(html[pos:])
+
+          check(
+              plan["revision"] == REVISION,
+              "Plano v8.4 sem revisão correta"
+          )
+
+          for day, ex_id in (
+              ("Terça", "tue-cablecurl-bar"),
+              ("Quarta", "wed-inclinecurl-db"),
+              ("Sexta", "fri-overheadtri-rope")
+          ):
+              exercises = plan["days"][day]["exercises"]
+              check(
+                  sum(e["id"] == ex_id for e in exercises) == 1,
+                  "Novo exercício ausente ou duplicado: " + ex_id
+              )
+              check(
+                  f"'{ex_id}':" in html,
+                  "Body Map ausente: " + ex_id
+              )
+
+          wed = {
+              e["id"]: e
+              for e in plan["days"]["Quarta"]["exercises"]
+          }
+          check(
+              wed["wed-bayesian"]["active"] is False,
+              "Bayesian Curl não está pausado"
+          )
+          check(
+              wed["wed-wristflex"]["loadMode"] == "twoDumbbells",
+              "Wrist Curl não está configurado para dois halteres"
+          )
+
+          check(
+              "OnBackInvokedDispatcher" in java
+              and "handleAppBack()" in java,
+              "Android Back incompleto"
+          )
+          check(
+              "setWeightReminderEnabled" in java
+              and "weight-reminder-toggle" in html
+              and "isEnabled(Context context)" in scheduler,
+              "Controlo de lembrete incompleto"
+          )
+
+          required_videos = (
+              (
+                  "tue-cablecurl-bar",
+                  ("straight", "bar", "cable", "curl", "good", "form")
+              ),
+              (
+                  "wed-inclinecurl-db",
+                  ("incline", "dumbbell", "curl", "how", "to", "form", "tutorial")
+              ),
+              (
+                  "wed-wristflex",
+                  ("dumbbell", "seated", "wrist", "curls")
+              )
+          )
+
+          def normalize_video(value):
+              value = unicodedata.normalize("NFD", value)
+              value = "".join(
+                  c for c in value
+                  if unicodedata.category(c) != "Mn"
+              )
+              return re.sub(
+                  r"\s+", " ",
+                  re.sub(r"[^a-z0-9]+", " ", value.lower())
+              ).strip()
+
+          files = [
+              normalize_video(p.name)
+              for p in VIDEOS.iterdir()
+              if p.suffix.lower() == ".mp4"
+          ]
+
+          for ex_id, tokens in required_videos:
+              check(
+                  any(
+                      all(token in file for token in tokens)
+                      for file in files
+                  ),
+                  "Vídeo não encontrado: " + ex_id
+              )
+
+          scripts = re.findall(
+              r"<script(?:\s[^>]*)?>([\s\S]*?)</script>",
+              html
+          )
+          check(
+              scripts and scripts[-1].strip().startswith("(() => {"),
+              "Script principal não encontrado"
+          )
+          Path("/tmp/hp-v84-inline.js").write_text(
+              scripts[-1], encoding="utf-8"
+          )
+
+          print("========================================")
+          print("HIPERTROFIA PRO v8.4")
+          print("Versões: verificadas")
+          print("Patch 1: 26 alterações integradas")
+          print("Patch 2: 3 reordenações integradas")
+          print("Body Maps: 3 novos perfis verificados")
+          print("Vídeos: 3 associações verificadas")
+          print("Android Back: integrado")
+          print("Vibração: atualizada")
+          print("Lembrete: controlo ativar/desativar")
+          print("Backup v8.3: compatibilidade preservada")
+          print("========================================")
+          PY
+
+          python3 /tmp/hp_upgrade_v84.py
+
+      - name: Verificar sintaxe JavaScript
+        run: node --check /tmp/hp-v84-inline.js
+
+      - name: Compilar APK v8.4
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Preparar ficheiros completos
+        run: |
+          zip -q Hipertrofia-Pro-v8.4-Fontes.zip \
+            app/src/main/assets/www/index.html \
+            app/src/main/java/mz/nader/hipertrofiapro/MainActivity.java \
+            app/src/main/java/mz/nader/hipertrofiapro/WeightReminderScheduler.java \
+            app/src/main/java/mz/nader/hipertrofiapro/WeightReminderReceiver.java \
+            app/build.gradle \
+            .github/workflows/build-apk.yml
+
+      - name: Disponibilizar ficheiros completos
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hipertrofia-Pro-v8.4-Fontes
+          path: Hipertrofia-Pro-v8.4-Fontes.zip
+          if-no-files-found: error
+
+      - name: Preparar APK para instalacao
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk \
+             Hipertrofia-Pro-v8.4.apk
+
+      - name: Disponibilizar APK v8.4
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hipertrofia-Pro-v8.4-APK
+          path: Hipertrofia-Pro-v8.4.apk
+          if-no-files-found: error
+
+      - name: Guardar codigo atualizado no GitHub
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add \
+            app/src/main/assets/www/index.html \
+            app/src/main/java/mz/nader/hipertrofiapro/MainActivity.java \
+            app/src/main/java/mz/nader/hipertrofiapro/WeightReminderScheduler.java \
+            app/src/main/java/mz/nader/hipertrofiapro/WeightReminderReceiver.java \
+            app/build.gradle \
+            .github/workflows/build-apk.yml
+
+          if git diff --cached --quiet; then
+            echo "Fontes v8.4 ja atualizados."
+          else
+            git commit -m \
+              "Hipertrofia Pro v8.4 - atualizacao integrada"
+
+            if ! git push origin HEAD:main; then
+              echo "::warning::Nao foi possivel atualizar main automaticamente."
+              echo "Os fontes e o APK continuam disponiveis nos Artifacts."
+            fi
+          fi
