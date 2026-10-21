@@ -1,0 +1,102 @@
+
+name: Guardar fontes Hipertrofia Pro v8.4
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  guardar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obter repositorio
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Encontrar compilacao v8.4
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow upgrade-v84.yml \
+            --branch main \
+            --limit 20 \
+            --json databaseId,conclusion \
+            --jq '[.[] | select(.conclusion=="success")][0].databaseId')
+
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "::error::Nao existe ainda uma execucao v8.4 concluida com sucesso."
+            exit 1
+          fi
+
+          echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+          echo "Compilacao encontrada: $RUN_ID"
+
+      - name: Descarregar fontes v8.4
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/hp-v84"
+
+          gh run download "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name Hipertrofia-Pro-v8.4-Fontes \
+            --dir "$RUNNER_TEMP/hp-v84"
+
+          unzip -o \
+            "$RUNNER_TEMP/hp-v84/Hipertrofia-Pro-v8.4-Fontes.zip" \
+            -d .
+
+      - name: Validar ficheiros recebidos
+        shell: bash
+        run: |
+          HTML="app/src/main/assets/www/index.html"
+          JAVA="app/src/main/java/mz/nader/hipertrofiapro/MainActivity.java"
+          GRADLE="app/build.gradle"
+
+          grep -Fq "const VERSION = '8.4.0'" "$HTML"
+          grep -Fq 'APP_VERSION = "8.4.0"' "$JAVA"
+          grep -Fq "versionName '8.4.0'" "$GRADLE"
+          grep -Fq "tue-cablecurl-bar" "$HTML"
+          grep -Fq "wed-inclinecurl-db" "$HTML"
+          grep -Fq "fri-overheadtri-rope" "$HTML"
+          grep -Fq "handleAppBack()" "$JAVA"
+
+          echo "Fontes v8.4 encontrados e verificados."
+
+      - name: Guardar codigo no ramo main
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add \
+            app/src/main/assets/www/index.html \
+            app/src/main/java/mz/nader/hipertrofiapro/MainActivity.java \
+            app/src/main/java/mz/nader/hipertrofiapro/WeightReminderScheduler.java \
+            app/src/main/java/mz/nader/hipertrofiapro/WeightReminderReceiver.java \
+            app/build.gradle
+
+          if git diff --cached --quiet; then
+            echo "Os ficheiros ja estao atualizados."
+          else
+            git commit -m \
+              "Guardar fontes definitivos da Hipertrofia Pro v8.4"
+
+            git push origin HEAD:main
+          fi
+
+      - name: Confirmar
+        run: |
+          echo "Hipertrofia Pro v8.4 guardada no GitHub."
+          echo "O workflow antigo de compilacao permanece inalterado."
